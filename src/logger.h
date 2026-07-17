@@ -3,7 +3,47 @@
 
 #include "globalmacros.h"
 
+#include "config.h"
+
 #include <string>
+#include <format>
+
+
+#define LOG_INFO(fmt, ...)                         \
+    do                                             \
+    {                                              \
+        Logger &logger = Logger::instance();       \
+        logger.setLogLevel(LogLevel::INFO);        \
+        logger.log(std::format(fmt, __VA_ARGS__)); \
+    } while (0)
+
+#define LOG_ERROR(fmt, ...)                        \
+    do                                             \
+    {                                              \
+        Logger &logger = Logger::instance();       \
+        logger.setLogLevel(LogLevel::ERROR);       \
+        logger.log(std::format(fmt, __VA_ARGS__)); \
+    } while (0)
+
+#define LOG_FATAL(fmt, ...)                        \
+    do                                             \
+    {                                              \
+        Logger &logger = Logger::instance();       \
+        logger.setLogLevel(LogLevel::FATAL);       \
+        logger.log(std::format(fmt, __VA_ARGS__)); \
+    } while (0)
+
+#ifdef MUDUO_CORE_CONFIG_DEBUG
+#define LOG_DEBUG(fmt, ...)                        \
+    do                                             \
+    {                                              \
+        Logger &logger = Logger::instance();       \
+        logger.setLogLevel(LogLevel::DEBUG);       \
+        logger.log(std::format(fmt, __VA_ARGS__)); \
+    } while (0)
+#else
+#define LOG_DEBUG(fmt, ...)
+#endif
 
 
 // 定义日志的级别。
