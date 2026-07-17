@@ -8,7 +8,7 @@ set_version(version)
 set_xmakever("3.0.9")
 set_project("Muduo Core")
 set_description("Core Implementation Of Muduo Library.")
-set_languages("cxx17")
+set_languages("cxx20")
 
 add_rules("mode.debug", "mode.release")
 
