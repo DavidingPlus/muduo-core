@@ -14,7 +14,7 @@ protected:
     // SetUp() 和 TearDown() 函数类似 unity 单元测试框架那个。
 
     // 每个测试开始前恢复默认日志级别。
-    void SetUp() override { Logger::instance().setLogLevel(Logger::LogLevel::INFO); }
+    void SetUp() override { Logger::instance().setLogLevel(LogLevel::INFO); }
 
     void TearDown() override {}
 
@@ -60,7 +60,7 @@ TEST_F(LoggerTest, DefaultLevel)
 
 TEST_F(LoggerTest, InfoLevel)
 {
-    Logger::instance().setLogLevel(Logger::LogLevel::INFO);
+    Logger::instance().setLogLevel(LogLevel::INFO);
 
     Logger::instance().log("info message");
     auto output = captureOutput([]()
@@ -72,7 +72,7 @@ TEST_F(LoggerTest, InfoLevel)
 
 TEST_F(LoggerTest, ErrorLevel)
 {
-    Logger::instance().setLogLevel(Logger::LogLevel::ERROR);
+    Logger::instance().setLogLevel(LogLevel::ERROR);
 
     Logger::instance().log("error message");
     auto output = captureOutput([]()
@@ -84,7 +84,7 @@ TEST_F(LoggerTest, ErrorLevel)
 
 TEST_F(LoggerTest, FatalLevel)
 {
-    Logger::instance().setLogLevel(Logger::LogLevel::FATAL);
+    Logger::instance().setLogLevel(LogLevel::FATAL);
 
     Logger::instance().log("fatal message");
     auto output = captureOutput([]()
@@ -97,7 +97,7 @@ TEST_F(LoggerTest, FatalLevel)
 
 TEST_F(LoggerTest, DebugLevel)
 {
-    Logger::instance().setLogLevel(Logger::LogLevel::DEBUG);
+    Logger::instance().setLogLevel(LogLevel::DEBUG);
 
     Logger::instance().log("debug message");
     auto output = captureOutput([]()
