@@ -34,5 +34,5 @@ void Logger::log(const std::string &msg)
             break;
     }
 
-    std::cout << pre + Timestamp::now().toString() << " : " << msg << std::endl;
+    std::cout << (pre + '(' + Timestamp::now().toString() + "): " + msg) << std::endl;
 }
