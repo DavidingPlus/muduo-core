@@ -18,9 +18,14 @@ target("tests")
 
     add_files("main.cpp")
 
-    add_tests("muduo-core", {
+    -- add_tests("core", {
+    --     realtime_output = true,
+    --     files = {"core/*.cpp"}
+    -- })
+
+    add_tests("utils", {
         realtime_output = true,
-        files = {"muduo-core/*.cpp"}
+        files = {"utils/*.cpp"}
     })
 
     add_tests("testrun", {

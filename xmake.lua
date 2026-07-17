@@ -70,7 +70,8 @@ target("muduo-core")
     -- 会将 src 根目录和所有子目录一起匹配。
     add_files("src/**.cpp")
     add_public_headers()
-    add_includedirs("src", {public = true})
+
+    add_includedirs("src", os.dirs("src/**"), {public = true})
 
     before_build(function (target)
         io.writefile(path.join(path.directory(target:targetdir()), ".version"), version)
