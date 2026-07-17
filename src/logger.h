@@ -24,13 +24,14 @@ public:
 
 
     // 获取日志唯一的单例实例对象。
+    // 采用内部静态变量的懒汉实现。详见：https://github.com/DavidingPlus/coroutine-lib/blob/master/snippet/Singleton/singleton1.h
     static Logger &instance();
 
     // 设置日志级别。
-    void setLogLevel(int level);
+    void setLogLevel(LogLevel level) { m_logLevel = level; }
 
-    // 写日志。
-    void log(std::string msg);
+    // 写日志。[级别信息] time : msg
+    void log(const std::string &msg);
 
 
 protected:
