@@ -11,13 +11,6 @@ class LoggerTest : public testing::Test
 
 protected:
 
-    // SetUp() 和 TearDown() 函数类似 unity 单元测试框架那个。
-
-    // 每个测试开始前恢复默认日志级别。
-    void SetUp() override { Logger::instance().setLogLevel(LogLevel::INFO); }
-
-    void TearDown() override {}
-
     // 捕获 std::cout 输出。
     std::string captureOutput(std::function<void()> func)
     {
@@ -50,9 +43,9 @@ TEST_F(LoggerTest, Singleton)
 
 TEST_F(LoggerTest, DefaultLevel)
 {
-    Logger::instance().log("hello");
+    Logger::instance().log(LogLevel::INFO, "hello");
     auto output = captureOutput([]()
-                                { Logger::instance().log("hello"); });
+                                { Logger::instance().log(LogLevel::INFO, "hello"); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("hello"), std::string::npos);
@@ -60,11 +53,9 @@ TEST_F(LoggerTest, DefaultLevel)
 
 TEST_F(LoggerTest, InfoLevel)
 {
-    Logger::instance().setLogLevel(LogLevel::INFO);
-
-    Logger::instance().log("info message");
+    Logger::instance().log(LogLevel::INFO, "info message");
     auto output = captureOutput([]()
-                                { Logger::instance().log("info message"); });
+                                { Logger::instance().log(LogLevel::INFO, "info message"); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("info message"), std::string::npos);
@@ -72,11 +63,9 @@ TEST_F(LoggerTest, InfoLevel)
 
 TEST_F(LoggerTest, ErrorLevel)
 {
-    Logger::instance().setLogLevel(LogLevel::ERROR);
-
-    Logger::instance().log("error message");
+    Logger::instance().log(LogLevel::ERROR, "error message");
     auto output = captureOutput([]()
-                                { Logger::instance().log("error message"); });
+                                { Logger::instance().log(LogLevel::ERROR, "error message"); });
 
     EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
     EXPECT_NE(output.find("error message"), std::string::npos);
@@ -84,11 +73,9 @@ TEST_F(LoggerTest, ErrorLevel)
 
 TEST_F(LoggerTest, FatalLevel)
 {
-    Logger::instance().setLogLevel(LogLevel::FATAL);
-
-    Logger::instance().log("fatal message");
+    Logger::instance().log(LogLevel::FATAL, "fatal message");
     auto output = captureOutput([]()
-                                { Logger::instance().log("fatal message"); });
+                                { Logger::instance().log(LogLevel::FATAL, "fatal message"); });
 
 
     EXPECT_NE(output.find("[ FATAL ]"), std::string::npos);
@@ -97,11 +84,9 @@ TEST_F(LoggerTest, FatalLevel)
 
 TEST_F(LoggerTest, DebugLevel)
 {
-    Logger::instance().setLogLevel(LogLevel::DEBUG);
-
-    Logger::instance().log("debug message");
+    Logger::instance().log(LogLevel::DEBUG, "debug message");
     auto output = captureOutput([]()
-                                { Logger::instance().log("debug message"); });
+                                { Logger::instance().log(LogLevel::DEBUG, "debug message"); });
 
     EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
     EXPECT_NE(output.find("debug message"), std::string::npos);
@@ -109,9 +94,9 @@ TEST_F(LoggerTest, DebugLevel)
 
 TEST_F(LoggerTest, TimestampFormat)
 {
-    Logger::instance().log("timestamp test");
+    Logger::instance().log(LogLevel::INFO, "timestamp test");
     auto output = captureOutput([]()
-                                { Logger::instance().log("timestamp test"); });
+                                { Logger::instance().log(LogLevel::INFO, "timestamp test"); });
 
     /*
      * Logger 输出格式：
@@ -132,7 +117,7 @@ TEST_F(LoggerTest, TimestampFormat)
 TEST_F(LoggerTest, EmptyMessage)
 {
     auto output = captureOutput([]()
-                                { Logger::instance().log(""); });
+                                { Logger::instance().log(LogLevel::INFO, ""); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
 }
@@ -141,7 +126,7 @@ TEST_F(LoggerTest, SpecialCharacters)
 {
     std::string msg = "hello\nworld\t123";
     auto output = captureOutput([&]()
-                                { Logger::instance().log(msg); });
+                                { Logger::instance().log(LogLevel::INFO, msg); });
 
     EXPECT_NE(output.find("hello"), std::string::npos);
     EXPECT_NE(output.find("world"), std::string::npos);

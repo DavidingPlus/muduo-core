@@ -13,31 +13,31 @@ Logger &Logger::instance()
     return logger;
 }
 
-void Logger::log(const std::string &msg)
+void Logger::log(LogLevel level, const std::string &msg)
 {
-    std::string level;
+    std::string levelText;
 
-    switch (m_logLevel)
+    switch (level)
     {
         case LogLevel::INFO:
-            level = "[ INFO ]";
+            levelText = "[ INFO ]";
             break;
         case LogLevel::ERROR:
-            level = "[ ERROR ]";
+            levelText = "[ ERROR ]";
             break;
         case LogLevel::FATAL:
-            level = "[ FATAL ]";
+            levelText = "[ FATAL ]";
             break;
         case LogLevel::DEBUG:
-            level = "[ DEBUG ]";
+            levelText = "[ DEBUG ]";
             break;
         default:
             break;
     }
 
     {
-        LogColorGuard guard(m_logLevel);
-        std::cout << level + '(' + Timestamp::now().toString() + "): ";
+        LogColorGuard guard(level);
+        std::cout << levelText + '(' + Timestamp::now().toString() + "): ";
     }
 
     std::cout << msg << std::endl;

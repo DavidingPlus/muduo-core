@@ -13,24 +13,24 @@
     do                                             \
     {                                              \
         Logger &logger = Logger::instance();       \
-        logger.setLogLevel(LogLevel::INFO);        \
-        logger.log(std::format(fmt, __VA_ARGS__)); \
+        logger.log(LogLevel::INFO,                 \
+                   std::format(fmt, __VA_ARGS__)); \
     } while (0)
 
 #define LOG_ERROR(fmt, ...)                        \
     do                                             \
     {                                              \
         Logger &logger = Logger::instance();       \
-        logger.setLogLevel(LogLevel::ERROR);       \
-        logger.log(std::format(fmt, __VA_ARGS__)); \
+        logger.log(LogLevel::ERROR,                \
+                   std::format(fmt, __VA_ARGS__)); \
     } while (0)
 
 #define LOG_FATAL(fmt, ...)                        \
     do                                             \
     {                                              \
         Logger &logger = Logger::instance();       \
-        logger.setLogLevel(LogLevel::FATAL);       \
-        logger.log(std::format(fmt, __VA_ARGS__)); \
+        logger.log(LogLevel::FATAL,                \
+                   std::format(fmt, __VA_ARGS__)); \
     } while (0)
 
 #ifdef MUDUO_CORE_CONFIG_DEBUG
@@ -38,8 +38,8 @@
     do                                             \
     {                                              \
         Logger &logger = Logger::instance();       \
-        logger.setLogLevel(LogLevel::DEBUG);       \
-        logger.log(std::format(fmt, __VA_ARGS__)); \
+        logger.log(LogLevel::DEBUG,                \
+                   std::format(fmt, __VA_ARGS__)); \
     } while (0)
 #else
 #define LOG_DEBUG(fmt, ...)
@@ -67,23 +67,15 @@ public:
     // 采用内部静态变量的懒汉实现。详见：https://github.com/DavidingPlus/coroutine-lib/blob/master/snippet/Singleton/singleton1.h
     static Logger &instance();
 
-    // 设置日志级别。
-    void setLogLevel(LogLevel level) { m_logLevel = level; }
-
     // 写日志。[级别信息](time): msg
-    void log(const std::string &msg);
+    void log(LogLevel level, const std::string &msg);
 
 
 protected:
 
-    Logger() : m_logLevel(LogLevel::INFO) {}
+    Logger() = default;
 
     virtual ~Logger() = default;
-
-
-private:
-
-    LogLevel m_logLevel;
 };
 
 
