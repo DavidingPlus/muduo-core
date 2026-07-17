@@ -1,4 +1,4 @@
-# xmake-project-template
+# muduo-core
 
-C/C++ 项目的 XMake 模板。
+muduo 库的核心实现。
 

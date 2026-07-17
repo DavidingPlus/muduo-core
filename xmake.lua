@@ -1,13 +1,13 @@
 includes("config.lua")
 
 
-local version = "1.2.2"
+local version = "0.0.0"
 
 set_version(version)
 
 set_xmakever("3.0.9")
-set_project("XMake Project")
-set_description("A C/C++ Project Template Powered By Xmake.")
+set_project("Muduo Core")
+set_description("Core Implementation Of Muduo Library.")
 set_languages("cxx17")
 
 add_rules("mode.debug", "mode.release")
@@ -56,7 +56,7 @@ if install_in_place then
     set_installdir("$(builddir)/$(plat)/$(arch)/$(mode)/install")
 end
 
-target("xmake-project")
+target("muduo-core")
     set_kind(build_shared and "shared" or "static")
 
     apply_current_platform_target_config()

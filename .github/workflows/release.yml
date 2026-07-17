@@ -2,7 +2,7 @@
 name: Release
 
 env:
-  PACKAGE_NAME: xmake-project
+  PACKAGE_NAME: muduo-core
 
 on:
   workflow_dispatch:
@@ -83,7 +83,7 @@ jobs:
     # 使用 xmake 原生 package 机制生成编译完成的二进制包。
     # build/packages/
     # └── x
-    #     └── xmake-project
+    #     └── muduo-core
     #         └── linux
     #             └── x86_64
     #                 └── release
@@ -112,8 +112,8 @@ jobs:
     # 当前所有包均使用 release 模式构建：
     #
     # Windows:
-    #   - /MD  -> xmake-project-<version>-windows-x64-MD.tar.gz
-    #   - /MDd -> xmake-project-<version>-windows-x64-MDd.tar.gz
+    #   - /MD  -> muduo-core-<version>-windows-x64-MD.tar.gz
+    #   - /MDd -> muduo-core-<version>-windows-x64-MDd.tar.gz
     #
     # Linux:
     #   Linux 不存在 MSVC Runtime 概念，因此仅根据平台和架构区分：
@@ -122,7 +122,7 @@ jobs:
     #
     # 原始结构：
     #
-    # xmake-project/
+    # muduo-core/
     # └── <plat>/
     #     └── <arch>/
     #         └── release/
@@ -132,17 +132,17 @@ jobs:
     #
     # 转换后：
     #
-    # xmake-project-v1.1.1-windows-x64-MD.tar.gz
+    # muduo-core-v1.1.1-windows-x64-MD.tar.gz
     # ├── include/
     # ├── lib/
     # └── bin/
     #
-    # xmake-project-v1.1.1-windows-x64-MDd.tar.gz
+    # muduo-core-v1.1.1-windows-x64-MDd.tar.gz
     # ├── include/
     # ├── lib/
     # └── bin/
     #
-    # xmake-project-v1.1.1-linux-x86_64.tar.gz
+    # muduo-core-v1.1.1-linux-x86_64.tar.gz
     # ├── include/
     # ├── lib/
     # └── bin/

@@ -10,7 +10,7 @@ target("tests")
 
     set_kind("binary")
     set_targetdir("$(builddir)/$(plat)/$(arch)/$(mode)/test")
-    add_deps("xmake-project")
+    add_deps("muduo-core")
     add_packages("gtest")
 
     on_install(function () end)
@@ -18,9 +18,9 @@ target("tests")
 
     add_files("main.cpp")
 
-    add_tests("xmake-project", {
+    add_tests("muduo-core", {
         realtime_output = true,
-        files = {"xmake-project/*.cpp"}
+        files = {"muduo-core/*.cpp"}
     })
 
     add_tests("testrun", {
