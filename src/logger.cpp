@@ -1,5 +1,6 @@
 #include "logger.h"
 
+#include "logcolor.h"
 #include "timestamp.h"
 
 #include <iostream>
@@ -14,25 +15,30 @@ Logger &Logger::instance()
 
 void Logger::log(const std::string &msg)
 {
-    std::string pre;
+    std::string level;
 
     switch (m_logLevel)
     {
         case LogLevel::INFO:
-            pre = "[INFO]";
+            level = "[ INFO ]";
             break;
         case LogLevel::ERROR:
-            pre = "[ERROR]";
+            level = "[ ERROR ]";
             break;
         case LogLevel::FATAL:
-            pre = "[FATAL]";
+            level = "[ FATAL ]";
             break;
         case LogLevel::DEBUG:
-            pre = "[DEBUG]";
+            level = "[ DEBUG ]";
             break;
         default:
             break;
     }
 
-    std::cout << (pre + '(' + Timestamp::now().toString() + "): " + msg) << std::endl;
+    {
+        LogColorGuard guard(m_logLevel);
+        std::cout << level + '(' + Timestamp::now().toString() + "): ";
+    }
+
+    std::cout << msg << std::endl;
 }

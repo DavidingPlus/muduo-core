@@ -30,7 +30,7 @@ public:
     // 设置日志级别。
     void setLogLevel(LogLevel level) { m_logLevel = level; }
 
-    // 写日志。[级别信息] time : msg
+    // 写日志。[级别信息](time): msg
     void log(const std::string &msg);
 
 

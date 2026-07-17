@@ -50,65 +50,73 @@ TEST_F(LoggerTest, Singleton)
 
 TEST_F(LoggerTest, DefaultLevel)
 {
+    Logger::instance().log("hello");
     auto output = captureOutput([]()
                                 { Logger::instance().log("hello"); });
 
-    EXPECT_NE(output.find("[INFO]"), std::string::npos);
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("hello"), std::string::npos);
 }
 
 TEST_F(LoggerTest, InfoLevel)
 {
     Logger::instance().setLogLevel(Logger::LogLevel::INFO);
+
+    Logger::instance().log("info message");
     auto output = captureOutput([]()
                                 { Logger::instance().log("info message"); });
 
-    EXPECT_NE(output.find("[INFO]"), std::string::npos);
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("info message"), std::string::npos);
 }
 
 TEST_F(LoggerTest, ErrorLevel)
 {
     Logger::instance().setLogLevel(Logger::LogLevel::ERROR);
+
+    Logger::instance().log("error message");
     auto output = captureOutput([]()
                                 { Logger::instance().log("error message"); });
 
-    EXPECT_NE(output.find("[ERROR]"), std::string::npos);
+    EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
     EXPECT_NE(output.find("error message"), std::string::npos);
 }
 
 TEST_F(LoggerTest, FatalLevel)
 {
     Logger::instance().setLogLevel(Logger::LogLevel::FATAL);
+
+    Logger::instance().log("fatal message");
     auto output = captureOutput([]()
                                 { Logger::instance().log("fatal message"); });
 
 
-    EXPECT_NE(output.find("[FATAL]"), std::string::npos);
+    EXPECT_NE(output.find("[ FATAL ]"), std::string::npos);
     EXPECT_NE(output.find("fatal message"), std::string::npos);
 }
 
 TEST_F(LoggerTest, DebugLevel)
 {
     Logger::instance().setLogLevel(Logger::LogLevel::DEBUG);
+
+    Logger::instance().log("debug message");
     auto output = captureOutput([]()
                                 { Logger::instance().log("debug message"); });
 
-    EXPECT_NE(output.find("[DEBUG]"), std::string::npos);
+    EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
     EXPECT_NE(output.find("debug message"), std::string::npos);
 }
 
 TEST_F(LoggerTest, TimestampFormat)
 {
     Logger::instance().log("timestamp test");
-
     auto output = captureOutput([]()
                                 { Logger::instance().log("timestamp test"); });
 
     /*
      * Logger 输出格式：
      *
-     * [INFO] 2026-07-17 16:20:30.123456000 : timestamp test
+     * [ INFO ] 2026-07-17 16:20:30.123456000 : timestamp test
      *
      * 检查：
      *
@@ -126,7 +134,7 @@ TEST_F(LoggerTest, EmptyMessage)
     auto output = captureOutput([]()
                                 { Logger::instance().log(""); });
 
-    EXPECT_NE(output.find("[INFO]"), std::string::npos);
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
 }
 
 TEST_F(LoggerTest, SpecialCharacters)
