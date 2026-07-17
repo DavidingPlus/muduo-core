@@ -33,7 +33,7 @@
                    std::format(fmt, __VA_ARGS__)); \
     } while (0)
 
-#ifdef MUDUO_CORE_CONFIG_DEBUG
+#if MUDUO_CORE_CONFIG_DEBUG
 #define LOG_DEBUG(fmt, ...)                        \
     do                                             \
     {                                              \

@@ -132,3 +132,47 @@ TEST_F(LoggerTest, SpecialCharacters)
     EXPECT_NE(output.find("world"), std::string::npos);
     EXPECT_NE(output.find("123"), std::string::npos);
 }
+
+TEST_F(LoggerTest, LogInfoMacro)
+{
+    LOG_INFO("info {}", 123);
+    auto output = captureOutput([]()
+                                { LOG_INFO("info {}", 123); });
+
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
+    EXPECT_NE(output.find("info 123"), std::string::npos);
+}
+
+TEST_F(LoggerTest, LogErrorMacro)
+{
+    LOG_ERROR("error {}", 456);
+    auto output = captureOutput([]()
+                                { LOG_ERROR("error {}", 456); });
+
+    EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
+    EXPECT_NE(output.find("error 456"), std::string::npos);
+}
+
+TEST_F(LoggerTest, LogFatalMacro)
+{
+    LOG_FATAL("fatal {}", 789);
+    auto output = captureOutput([]()
+                                { LOG_FATAL("fatal {}", 789); });
+
+    EXPECT_NE(output.find("[ FATAL ]"), std::string::npos);
+    EXPECT_NE(output.find("fatal 789"), std::string::npos);
+}
+
+TEST_F(LoggerTest, LogDebugMacro)
+{
+    LOG_DEBUG("debug {}", 321);
+    auto output = captureOutput([]()
+                                { LOG_DEBUG("debug {}", 321); });
+
+#if MUDUO_CORE_CONFIG_DEBUG
+    EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
+    EXPECT_NE(output.find("debug 321"), std::string::npos);
+#else
+    EXPECT_TRUE(output.empty());
+#endif
+}
