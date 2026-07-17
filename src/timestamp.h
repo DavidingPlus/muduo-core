@@ -9,11 +9,13 @@ class Timestamp
 
 public:
 
-    Timestamp() : m_microSecondsSinceEpoch(0) {}
+    Timestamp() : m_microSecondsSinceEpoch(static_cast<int64_t>(0)) {}
 
-    explicit Timestamp(int64_t microSecondsSinceEpoch) : m_microSecondsSinceEpoch(m_microSecondsSinceEpoch) {}
+    explicit Timestamp(int64_t microSecondsSinceEpoch) : m_microSecondsSinceEpoch(microSecondsSinceEpoch) {}
 
-    virtual ~Timestamp() = default;
+    ~Timestamp() = default;
+
+    int64_t microSecondsSinceEpoch() const { return m_microSecondsSinceEpoch; }
 
     // 获取当前系统时间戳。
     static Timestamp now();

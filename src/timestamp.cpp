@@ -25,5 +25,5 @@ std::string Timestamp::toString() const
 
 
     // 格式化日期时间。
-    return std::format("{:%Y/%m/%d %H:%M:%S}.{:06}", localTime, m_microSecondsSinceEpoch % 1000000);
+    return std::format("{:%Y/%m/%d %H:%M:%S}", localTime);
 }
