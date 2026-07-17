@@ -2,29 +2,22 @@
 
 #include "logger.h"
 
-#include <iostream>
 
-
-LogColorGuard::LogColorGuard(Logger::LogLevel level)
+LogColorGuard::LogColorGuard(LogLevel level)
 {
     switch (level)
     {
-        case Logger::LogLevel::INFO:
+        case LogLevel::INFO:
             std::cout << LOG_COLOR_INFO;
             break;
-        case Logger::LogLevel::ERROR:
+        case LogLevel::ERROR:
             std::cout << LOG_COLOR_ERROR;
             break;
-        case Logger::LogLevel::FATAL:
+        case LogLevel::FATAL:
             std::cout << LOG_COLOR_FATAL;
             break;
-        case Logger::LogLevel::DEBUG:
+        case LogLevel::DEBUG:
             std::cout << LOG_COLOR_DEBUG;
             break;
     }
-}
-
-LogColorGuard::~LogColorGuard()
-{
-    std::cout << LOG_COLOR_RESET;
 }

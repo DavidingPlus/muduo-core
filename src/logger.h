@@ -6,22 +6,22 @@
 #include <string>
 
 
+// 定义日志的级别。
+enum class LogLevel
+{
+    INFO,  // 普通信息。
+    ERROR, // 错误信息。
+    FATAL, // core dump 信息。
+    DEBUG  // 调试信息。
+};
+
+
 class Logger
 {
 
     CLASS_NONCOPYABLE(Logger)
 
 public:
-
-    // 定义日志的级别。
-    enum class LogLevel
-    {
-        INFO,  // 普通信息。
-        ERROR, // 错误信息。
-        FATAL, // core dump 信息。
-        DEBUG  // 调试信息。
-    };
-
 
     // 获取日志唯一的单例实例对象。
     // 采用内部静态变量的懒汉实现。详见：https://github.com/DavidingPlus/coroutine-lib/blob/master/snippet/Singleton/singleton1.h

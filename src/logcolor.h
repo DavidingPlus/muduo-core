@@ -1,7 +1,9 @@
 #ifndef _MUDUO_CORE_LOGCOLOR_H_
 #define _MUDUO_CORE_LOGCOLOR_H_
 
-#include "logger.h"
+#include <iostream>
+
+enum class LogLevel;
 
 
 // 清除所有颜色，恢复到默认。
@@ -26,10 +28,10 @@ class LogColorGuard
 public:
 
     // 构造时应用新传入等级对应的颜色。
-    explicit LogColorGuard(Logger::LogLevel level);
+    explicit LogColorGuard(LogLevel level);
 
     // 析构时自动恢复原始颜色。
-    ~LogColorGuard();
+    ~LogColorGuard() { std::cout << LOG_COLOR_RESET; }
 };
 
 
