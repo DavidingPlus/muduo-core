@@ -19,22 +19,6 @@ jobs:
     strategy:
       matrix:
         include:
-          # Windows MD
-          - os: windows
-            arch: x86_64
-            plat: windows
-            xmake-arch: x64
-            runtime: MD
-            runs-on: windows-latest
-
-          # Windows MDd
-          - os: windows
-            arch: x86_64
-            plat: windows
-            xmake-arch: x64
-            runtime: MDd
-            runs-on: windows-latest
-
           # Linux x86_64
           - os: ubuntu
             arch: x86_64
