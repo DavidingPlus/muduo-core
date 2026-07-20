@@ -8,7 +8,7 @@ set_version(version)
 set_xmakever("3.0.9")
 set_project("Muduo Core")
 set_description("Core Implementation Of Muduo Library.")
-set_languages("cxx20")
+set_languages("cxx17")
 
 add_rules("mode.debug", "mode.release")
 
@@ -16,6 +16,8 @@ set_configdir("$(builddir)/config/")
 add_configfiles("src/config.h.in")
 
 add_includedirs("$(builddir)/config/")
+
+add_requires("fmt")
 
 
 option("with_gtest")
@@ -60,6 +62,7 @@ target("muduo-core")
     set_kind(build_shared and "shared" or "static")
 
     apply_current_platform_target_config()
+    add_packages("fmt")
 
     if build_shared and is_current_win32() then
         add_rules("utils.symbols.export_all")
