@@ -47,8 +47,6 @@ public:
 
     size_t writableBytes() const { return m_buffer.size() - m_writerIndex; }
 
-    size_t prependableBytes() const { return m_readerIndex; }
-
     // 返回缓冲区中可读数据的起始地址。
     const char *peek() const { return begin() + m_readerIndex; }
 

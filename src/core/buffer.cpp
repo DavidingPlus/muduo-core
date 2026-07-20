@@ -40,3 +40,41 @@ void Buffer::append(const char *data, size_t len)
     std::copy(data, data + len, beginWrite());
     m_readerIndex += len;
 }
+
+ssize_t Buffer::readFd(int fd, int *saveErrno)
+{
+}
+
+ssize_t Buffer::writeFd(int fd, int *saveErrno)
+{
+}
+
+void Buffer::makeSpace(size_t len)
+{
+    // 初始情况下，内存布局是这样的 | prependable | kInitialSize |
+    // 在 Buffer 工作中，需明确两个方向的语义：
+    // readFd：fd -> Buffer，有新数据到来的时候，一定是把新数据写入 writable 区域，然后让它加入 readable 区域。
+    // writeFd：Buffer -> fd，把 readable 区域的数据发送出去，然后消费 readable 数据，因此会出现 readable 已读的部分，下面用 xxx 表示。
+
+    // 某时刻内存布局长这样：
+    // | kPrependSize | xxx | readable | writable |，xxx 表示 readable 中已读的部分。
+    // | kPrependSize | readable ｜ len |
+
+    // xxx 是已读的数据，是可以被回收的垃圾数据，因此现在实际上可写的空闲区域是 xxx 加 writable，如果这二者加起来大于等于 len，根本没必要扩容，只需要移动 readable 区的数据即可。
+    if (writableBytes() + m_readerIndex - kPrependSize >= len)
+    {
+        // 存储原可读区域的大小，防止后续因为修改指针导致 readableBytes() 失效而错误。
+        size_t readable = readableBytes();
+
+        // 将当前缓冲区中从 m_readerIndex 到 m_writerIndex 的数据，拷贝到缓冲区起始位置 kPrependSize 处，以便腾出更多的可写空间。
+        std::copy(begin() + m_readerIndex, begin() + m_writerIndex, begin() + kPrependSize);
+
+        m_readerIndex = kPrependSize;
+        m_writerIndex = m_readerIndex + readable;
+    }
+    // 否则需要扩容，这里选择暂时不处理 xxx 已读部分的数据，扩容只扩充数组尾部，因此前面的指针都不用动。
+    else
+    {
+        m_buffer.resize(m_writerIndex + len);
+    }
+}
