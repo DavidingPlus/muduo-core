@@ -47,7 +47,7 @@ public:
 
     size_t writableBytes() const { return m_buffer.size() - m_writerIndex; }
 
-    // 返回缓冲区中可读数据的起始地址。
+    // 返回缓冲区中可读 readable 区域的起始地址。
     const char *peek() const { return begin() + m_readerIndex; }
 
     // 注意：以下这四个 retrieve 系列函数操控的都是可读 readable 区的数据，并且都只是逻辑上消费数据，实际并不会修改 Buffer 内存，在实际操作中为了效率也不能频繁修改 Buffer 内存。它们只是在逻辑上移动指针，维持可读和可写的语义，表示这部分数据已经被上层处理。下面的注释用“消费”这个词语描述。
@@ -70,7 +70,7 @@ public:
     // 把 [data, data + len] 内存上的数据添加到 writable 缓冲区当中。
     void append(const char *data, size_t len);
 
-    // 返回可写 writable 区首个字节的地址。
+    // 返回缓冲区中可写 writable 区域的起始地址。
     char *beginWrite() { return begin() + m_writerIndex; }
 
     const char *beginWrite() const { return begin() + m_writerIndex; }

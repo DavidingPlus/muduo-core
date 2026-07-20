@@ -41,7 +41,7 @@ void Buffer::append(const char *data, size_t len)
 {
     ensureWritableBytes(len);
     std::copy(data, data + len, beginWrite());
-    m_readerIndex += len;
+    m_writerIndex += len;
 }
 
 ssize_t Buffer::readFd(int fd, int *saveErrno)

@@ -18,10 +18,10 @@ target("tests")
 
     add_files("main.cpp")
 
-    -- add_tests("core", {
-    --     realtime_output = true,
-    --     files = {"core/*.cpp"}
-    -- })
+    add_tests("core", {
+        realtime_output = true,
+        files = {"core/*.cpp"}
+    })
 
     add_tests("utils", {
         realtime_output = true,
