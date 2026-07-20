@@ -4,7 +4,6 @@
 #include <memory>
 #include <functional>
 
-
 class Buffer;
 class TcpConnection;
 class Timestamp;

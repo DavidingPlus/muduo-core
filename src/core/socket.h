@@ -3,6 +3,8 @@
 
 #include "globalmacros.h"
 
+#include <unistd.h>
+
 class InetAddress;
 
 
@@ -16,7 +18,7 @@ public:
 
     explicit Socket(int sockfd) : m_sockfd(sockfd) {}
 
-    ~Socket();
+    ~Socket() { ::close(m_sockfd); }
 
     int fd() const { return m_sockfd; }
 
