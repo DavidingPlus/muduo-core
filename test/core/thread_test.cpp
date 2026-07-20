@@ -1,0 +1,96 @@
+#include <gtest/gtest.h>
+
+#include <atomic>
+#include <chrono>
+#include <future>
+#include <string>
+#include <thread>
+
+#include "currentthread.h"
+#include "thread.h"
+
+
+using namespace std::chrono_literals;
+
+
+TEST(ThreadTest, ConstructorAssignsDefaultNameAndIncrementsCounter)
+{
+    const int before = Thread::numCreated();
+
+    Thread thread([]() {});
+
+    EXPECT_EQ(Thread::numCreated(), before + 1);
+    EXPECT_EQ(thread.name(), "Thread" + std::to_string(before + 1));
+    EXPECT_FALSE(thread.started());
+    EXPECT_EQ(thread.tid(), 0);
+}
+
+TEST(ThreadTest, ConstructorPreservesExplicitName)
+{
+    Thread thread([]() {}, "worker");
+
+    EXPECT_EQ(thread.name(), "worker");
+    EXPECT_FALSE(thread.started());
+    EXPECT_EQ(thread.tid(), 0);
+}
+
+TEST(ThreadTest, StartRunsCallbackAndPublishesKernelTid)
+{
+    std::promise<pid_t> promise;
+    auto future = promise.get_future();
+
+    Thread thread([&promise]()
+                  { promise.set_value(CurrentThread::tid()); },
+                  "starter");
+
+    thread.start();
+
+    EXPECT_TRUE(thread.started());
+    EXPECT_NE(thread.tid(), 0);
+    EXPECT_EQ(future.get(), thread.tid());
+
+    thread.join();
+}
+
+TEST(ThreadTest, JoinWaitsForCallbackCompletion)
+{
+    std::promise<void> started;
+    auto startedFuture = started.get_future();
+    std::atomic<bool> finished = false;
+
+    Thread thread([&started, &finished]()
+                  {
+                      started.set_value();
+                      std::this_thread::sleep_for(20ms);
+                      finished = true; });
+
+    thread.start();
+    startedFuture.wait();
+
+    EXPECT_FALSE(finished.load());
+
+    thread.join();
+
+    EXPECT_TRUE(finished.load());
+}
+
+TEST(ThreadTest, DestructorDetachesRunningThread)
+{
+    std::promise<void> started;
+    auto startedFuture = started.get_future();
+    std::promise<void> finished;
+    auto finishedFuture = finished.get_future();
+
+    {
+        Thread thread([&started, &finished]()
+                      {
+                          started.set_value();
+                          std::this_thread::sleep_for(20ms);
+                          finished.set_value(); });
+
+        thread.start();
+        startedFuture.wait();
+    }
+
+    EXPECT_EQ(finishedFuture.wait_for(200ms), std::future_status::ready);
+}
