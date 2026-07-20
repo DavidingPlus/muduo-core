@@ -52,7 +52,8 @@ jobs:
         args="\
           -m release \
           -p ${{ matrix.plat }} \
-          -a ${{ matrix.xmake-arch }}"
+          -a ${{ matrix.xmake-arch }} \
+          -y"
 
         if [ -n "${{ matrix.runtime }}" ]; then
             args="$args --runtimes=${{ matrix.runtime }}"
