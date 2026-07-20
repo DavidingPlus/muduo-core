@@ -1,12 +1,8 @@
 #include "inetaddress.h"
 
-#include <cstring>
-
 
 InetAddress::InetAddress(uint16_t port, const std::string &ip)
 {
-    std::memset(&m_addr, 0, sizeof(m_addr));
-
     m_addr.sin_family = AF_INET;
     // 本地字节序转为网络字节序。
     m_addr.sin_port = ::htons(port);

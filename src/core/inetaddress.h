@@ -30,7 +30,7 @@ public:
 
 private:
 
-    sockaddr_in m_addr;
+    sockaddr_in m_addr{};
 };
 
 
