@@ -143,6 +143,16 @@ TEST_F(LoggerTest, LogInfoMacro)
     EXPECT_NE(output.find("info 123"), std::string::npos);
 }
 
+TEST_F(LoggerTest, LogInfoMacroWithoutVariadicArgs)
+{
+    LOG_INFO("plain info message");
+    auto output = captureOutput([]()
+                                { LOG_INFO("plain info message"); });
+
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
+    EXPECT_NE(output.find("plain info message"), std::string::npos);
+}
+
 TEST_F(LoggerTest, LogErrorMacro)
 {
     LOG_ERROR("error {}", 456);
@@ -151,6 +161,16 @@ TEST_F(LoggerTest, LogErrorMacro)
 
     EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
     EXPECT_NE(output.find("error 456"), std::string::npos);
+}
+
+TEST_F(LoggerTest, LogErrorMacroWithoutVariadicArgs)
+{
+    LOG_ERROR("plain error message");
+    auto output = captureOutput([]()
+                                { LOG_ERROR("plain error message"); });
+
+    EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
+    EXPECT_NE(output.find("plain error message"), std::string::npos);
 }
 
 TEST_F(LoggerTest, LogFatalMacro)
@@ -163,6 +183,16 @@ TEST_F(LoggerTest, LogFatalMacro)
     EXPECT_NE(output.find("fatal 789"), std::string::npos);
 }
 
+TEST_F(LoggerTest, LogFatalMacroWithoutVariadicArgs)
+{
+    LOG_FATAL("plain fatal message");
+    auto output = captureOutput([]()
+                                { LOG_FATAL("plain fatal message"); });
+
+    EXPECT_NE(output.find("[ FATAL ]"), std::string::npos);
+    EXPECT_NE(output.find("plain fatal message"), std::string::npos);
+}
+
 TEST_F(LoggerTest, LogDebugMacro)
 {
     LOG_DEBUG("debug {}", 321);
@@ -172,6 +202,20 @@ TEST_F(LoggerTest, LogDebugMacro)
 #if MUDUO_CORE_CONFIG_DEBUG
     EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
     EXPECT_NE(output.find("debug 321"), std::string::npos);
+#else
+    EXPECT_TRUE(output.empty());
+#endif
+}
+
+TEST_F(LoggerTest, LogDebugMacroWithoutVariadicArgs)
+{
+    LOG_DEBUG("plain debug message");
+    auto output = captureOutput([]()
+                                { LOG_DEBUG("plain debug message"); });
+
+#if MUDUO_CORE_CONFIG_DEBUG
+    EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
+    EXPECT_NE(output.find("plain debug message"), std::string::npos);
 #else
     EXPECT_TRUE(output.empty());
 #endif

@@ -13,12 +13,12 @@
 
 void Socket::bindAddress(const InetAddress &localaddr)
 {
-    if (0 != ::bind(m_sockfd, (sockaddr *)localaddr.getSockAddr(), sizeof(sockaddr_in))) LOG_FATAL("bind sockfd: %d failed\n", m_sockfd);
+    if (0 != ::bind(m_sockfd, (sockaddr *)localaddr.getSockAddr(), sizeof(sockaddr_in))) LOG_FATAL("bind sockfd: {} failed", m_sockfd);
 }
 
 void Socket::listen()
 {
-    if (0 != ::listen(m_sockfd, 1024)) LOG_FATAL("listen sockfd: %d failed\n", m_sockfd);
+    if (0 != ::listen(m_sockfd, 1024)) LOG_FATAL("listen sockfd: {} failed", m_sockfd);
 }
 
 int Socket::accept(InetAddress *peeraddr)

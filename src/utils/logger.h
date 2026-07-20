@@ -9,37 +9,37 @@
 #include <format>
 
 
-#define LOG_INFO(fmt, ...)                         \
-    do                                             \
-    {                                              \
-        Logger &logger = Logger::instance();       \
-        logger.log(LogLevel::INFO,                 \
-                   std::format(fmt, __VA_ARGS__)); \
+#define LOG_INFO(fmt, ...)                                       \
+    do                                                           \
+    {                                                            \
+        Logger &logger = Logger::instance();                     \
+        logger.log(LogLevel::INFO,                               \
+                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
     } while (0)
 
-#define LOG_ERROR(fmt, ...)                        \
-    do                                             \
-    {                                              \
-        Logger &logger = Logger::instance();       \
-        logger.log(LogLevel::ERROR,                \
-                   std::format(fmt, __VA_ARGS__)); \
+#define LOG_ERROR(fmt, ...)                                      \
+    do                                                           \
+    {                                                            \
+        Logger &logger = Logger::instance();                     \
+        logger.log(LogLevel::ERROR,                              \
+                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
     } while (0)
 
-#define LOG_FATAL(fmt, ...)                        \
-    do                                             \
-    {                                              \
-        Logger &logger = Logger::instance();       \
-        logger.log(LogLevel::FATAL,                \
-                   std::format(fmt, __VA_ARGS__)); \
+#define LOG_FATAL(fmt, ...)                                      \
+    do                                                           \
+    {                                                            \
+        Logger &logger = Logger::instance();                     \
+        logger.log(LogLevel::FATAL,                              \
+                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
     } while (0)
 
 #if MUDUO_CORE_CONFIG_DEBUG
-#define LOG_DEBUG(fmt, ...)                        \
-    do                                             \
-    {                                              \
-        Logger &logger = Logger::instance();       \
-        logger.log(LogLevel::DEBUG,                \
-                   std::format(fmt, __VA_ARGS__)); \
+#define LOG_DEBUG(fmt, ...)                                      \
+    do                                                           \
+    {                                                            \
+        Logger &logger = Logger::instance();                     \
+        logger.log(LogLevel::DEBUG,                              \
+                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
     } while (0)
 #else
 #define LOG_DEBUG(fmt, ...)
