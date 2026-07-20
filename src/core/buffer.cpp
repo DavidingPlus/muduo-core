@@ -28,3 +28,15 @@ std::string Buffer::retrieveAsString(size_t len)
     retrieve(len);
     return res;
 }
+
+void Buffer::ensureWritableBytes(size_t len)
+{
+    if (writableBytes() < len) makeSpace(len);
+}
+
+void Buffer::append(const char *data, size_t len)
+{
+    ensureWritableBytes(len);
+    std::copy(data, data + len, beginWrite());
+    m_readerIndex += len;
+}

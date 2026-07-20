@@ -66,12 +66,13 @@ public:
     // 将 Buffer 当前所有可读数据复制为 string 返回，并消费全部数据。
     std::string retrieveAllAsString() { return retrieveAsString(readableBytes()); }
 
-    // m_buffer.size - m_writerIndex
+    // 保证 Buffer 至少拥有 len 字节的连续可写空间，不够就调用 makeSpace() 扩充。
     void ensureWritableBytes(size_t len);
 
     // 把 [data, data + len] 内存上的数据添加到 writable 缓冲区当中。
     void append(const char *data, size_t len);
 
+    // 返回可写 writable 区首个字节的地址。
     char *beginWrite() { return begin() + m_writerIndex; }
 
     const char *beginWrite() const { return begin() + m_writerIndex; }
@@ -85,7 +86,7 @@ public:
 
 private:
 
-    // vector 底层数组首元素的地址，也就是数组的起始地址。
+    // 返回缓冲区首个字节的地址。
     char *begin() { return &*m_buffer.begin(); }
 
     const char *begin() const { return &*m_buffer.begin(); }
