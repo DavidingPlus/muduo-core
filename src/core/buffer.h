@@ -75,10 +75,10 @@ public:
 
     const char *beginWrite() const { return begin() + m_writerIndex; }
 
-    // 从 fd 上读取数据。
+    // fd -> Buffer，把新数据写入 writable 区域，然后让它加入 readable 区域。
     ssize_t readFd(int fd, int *saveErrno);
 
-    // 通过 fd 发送数据。
+    // Buffer -> fd，把 readable 区域的数据发送出去
     ssize_t writeFd(int fd, int *saveErrno);
 
 
