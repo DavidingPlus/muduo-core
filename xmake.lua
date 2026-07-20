@@ -62,7 +62,7 @@ target("muduo-core")
     set_kind(build_shared and "shared" or "static")
 
     apply_current_platform_target_config()
-    add_packages("fmt")
+    add_packages("fmt", {public = true})
 
     if build_shared and is_current_win32() then
         add_rules("utils.symbols.export_all")

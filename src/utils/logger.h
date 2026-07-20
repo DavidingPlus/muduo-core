@@ -6,43 +6,41 @@
 #include "config.h"
 
 #include <string>
-#include <format>
+#include <utility>
+
+#include <fmt/format.h>
 
 
-#define LOG_INFO(fmt, ...)                                       \
-    do                                                           \
-    {                                                            \
-        Logger &logger = Logger::instance();                     \
-        logger.log(LogLevel::INFO,                               \
-                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
+#define LOG_INFO(...)                                     \
+    do                                                    \
+    {                                                     \
+        Logger &logger = Logger::instance();              \
+        logger.logFormatted(LogLevel::INFO, __VA_ARGS__); \
     } while (0)
 
-#define LOG_ERROR(fmt, ...)                                      \
-    do                                                           \
-    {                                                            \
-        Logger &logger = Logger::instance();                     \
-        logger.log(LogLevel::ERROR,                              \
-                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
+#define LOG_ERROR(...)                                     \
+    do                                                     \
+    {                                                      \
+        Logger &logger = Logger::instance();               \
+        logger.logFormatted(LogLevel::ERROR, __VA_ARGS__); \
     } while (0)
 
-#define LOG_FATAL(fmt, ...)                                      \
-    do                                                           \
-    {                                                            \
-        Logger &logger = Logger::instance();                     \
-        logger.log(LogLevel::FATAL,                              \
-                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
+#define LOG_FATAL(...)                                     \
+    do                                                     \
+    {                                                      \
+        Logger &logger = Logger::instance();               \
+        logger.logFormatted(LogLevel::FATAL, __VA_ARGS__); \
     } while (0)
 
 #if MUDUO_CORE_CONFIG_DEBUG
-#define LOG_DEBUG(fmt, ...)                                      \
-    do                                                           \
-    {                                                            \
-        Logger &logger = Logger::instance();                     \
-        logger.log(LogLevel::DEBUG,                              \
-                   std::format(fmt __VA_OPT__(, ) __VA_ARGS__)); \
+#define LOG_DEBUG(...)                                     \
+    do                                                     \
+    {                                                      \
+        Logger &logger = Logger::instance();               \
+        logger.logFormatted(LogLevel::DEBUG, __VA_ARGS__); \
     } while (0)
 #else
-#define LOG_DEBUG(fmt, ...)
+#define LOG_DEBUG(...)
 #endif
 
 
@@ -69,6 +67,10 @@ public:
 
     // 写日志。[级别信息](time): msg
     void log(LogLevel level, const std::string &msg);
+
+    // LOG 宏统一转到这里做 fmt 格式化，避免在宏里直接处理可变参数，
+    template <typename... Args>
+    void logFormatted(LogLevel level, fmt::format_string<Args...> format, Args &&...args) { log(level, fmt::format(format, std::forward<Args>(args)...)); }
 
 
 protected:
