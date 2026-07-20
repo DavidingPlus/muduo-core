@@ -52,14 +52,19 @@ public:
     // 返回缓冲区中可读数据的起始地址。
     const char *peek() const { return begin() + m_readerIndex; }
 
+    // 注意：以下这四个 retrieve 系列函数操控的都是可读 readable 区的数据，并且都只是逻辑上消费数据，实际并不会修改 Buffer 内存，在实际操作中为了效率也不能频繁修改 Buffer 内存。它们只是在逻辑上移动指针，维持可读和可写的语义，表示这部分数据已经被上层处理。下面的注释用“消费”这个词语描述。
+
+    // 消费指定长度的可读数据。
     void retrieve(size_t len);
 
+    // 消费当前 Buffer 中全部可读数据。
     void retrieveAll();
 
-    // 把 onMessage 函数上报的 Buffer 数据，转成 string 类型的数据返回。
-    std::string retrieveAllAsString();
-
+    // 将指定长度的可读数据复制为 string 返回，并消费这些数据。
     std::string retrieveAsString(size_t len);
+
+    // 将 Buffer 当前所有可读数据复制为 string 返回，并消费全部数据。
+    std::string retrieveAllAsString() { return retrieveAsString(readableBytes()); }
 
     // m_buffer.size - m_writerIndex
     void ensureWritableBytes(size_t len);
