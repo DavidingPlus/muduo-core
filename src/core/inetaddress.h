@@ -21,7 +21,7 @@ public:
 
     std::string toIpPort() const;
 
-    uint16_t toPort() const;
+    uint16_t toPort() const { return ::ntohs(m_addr.sin_port); }
 
     const sockaddr_in *getSockAddr() const { return &m_addr; }
 
