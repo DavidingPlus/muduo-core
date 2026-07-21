@@ -39,10 +39,12 @@ public:
 
     Timestamp pollReturnTime() const { return m_pollReturnTime; }
 
-    // 在当前 loop 中执行 cb，若在当前 EventLoop 中执行回调，若在非当前 EventLoop 线程中执行 cb，就需要唤醒 EventLoop 所在线程执行 cb。
+    // 在当前 EventLoop 所属线程执行 cb。若调用线程就是该 EventLoop 线程，直接执行；否则调用 queueInLoop() 将 cb 投递到该 EventLoop 的任务队列，由其线程执行。
+    // 例如：线程 A/B 调用 B->runInLoop(cb) 请求线程 B 执行 cb。如果调用者线程（A/B）就是该 EventLoop 所属线程（线程 B），则直接执行 cb，避免不必要的线程切换。如果调用者线程不是该 EventLoop 所属线程（线程 A），则通过 queueInLoop() 将 cb 投递给 EventLoop B，最终由线程 B 执行 cb。
     void runInLoop(Functor cb);
 
-    // 把上层注册的回调函数 cb 放入队列中，唤醒 loop 所在的线程执行 cb。
+    // 将任务加入当前 EventLoop 的 pendingFunctors 队列，由该 EventLoop 所属线程在事件循环中调用 doPendingFunctors() 执行。和 runInLoop() 不同，前者若调用线程就是 EventLoop 所属线程，则不用加入事件循环，直接执行，提升效率，queueInLoop() 会统一加入事件循环中执行。
+    // 例如：线程 A 调用 loopB->queueInLoop(cb)，cb 会加入 EventLoop B 的任务队列，最终由线程 B 执行。
     void queueInLoop(Functor cb);
 
     // 通过 eventfd 唤醒 loop 所在的线程。向 m_wakeupFd 写一个数据，wakeupChannel 就发生读事件，当前 loop 线程就会被唤醒。
@@ -117,11 +119,11 @@ private:
     // 返回 Poller 检测到当前有事件发生的所有 Channel 列表。
     ChannelList m_activeChannels;
 
-    // 标识当前 loop 是否有需要执行的回调操作。
-    std::atomic_bool m_callingPendingFunctors = false;
-
-    // 存储 loop 需要执行的所有回调操作。
+    // 存储提交给当前 EventLoop 执行的回调任务，希望由当前 EventLoop 所属线程执行的任务。这些任务通常由其他线程通过 queueInLoop() 投递，当然也可以由当前线程在执行任务过程中产生。与 Poller 返回的 IO 事件不同，这些任务最终由当前 EventLoop 所属线程在 doPendingFunctors() 中执行。
     std::vector<Functor> m_pendingFunctors;
+
+    // 标识当前 EventLoop 是否正在执行 pendingFunctors 队列中的任务。当 EventLoop 执行任务期间，又有新的任务加入队列时，需要通过 wakeup() 唤醒当前 EventLoop，避免新任务等待下一次 IO 事件后才能执行。
+    std::atomic_bool m_callingPendingFunctors = false;
 
     // 互斥锁，用来保护上面 vector 容器的线程安全操作。
     std::mutex m_mutex;

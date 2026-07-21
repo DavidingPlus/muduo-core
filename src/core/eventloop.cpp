@@ -64,15 +64,16 @@ void EventLoop::loop()
 
     while (!m_quit)
     {
+        // 执行当前 EventLoop 事件循环需要处理的回调操作。对于线程数 >= 2 的情况，IO 线程 mainloop(mainReactor) 主要工作：
+
+        // 1. 正常 poller 获取的 IO 事件。例如：accept 接收连接，将 accept 返回的 connfd 打包为 Channel，TcpServer::newConnection 通过轮询将 TcpConnection 对象分配给 subloop 处理。
         m_activeChannels.clear();
         m_pollReturnTime = m_poller->poll(kPollTimeMs, &m_activeChannels);
 
         // Poller 监听哪些 channel 发生了事件 然后上报给 EventLoop，通知 channel 处理相应的事件。
         for (Channel *channel : m_activeChannels) channel->handleEvent(m_pollReturnTime);
 
-        // 执行当前 EventLoop 事件循环需要处理的回调操作。对于线程数 >=2 的情况，IO 线程 mainloop(mainReactor) 主要工作：
-        // 1. accept 接收连接，将 accept 返回的 connfd 打包为 Channel，TcpServer::newConnection 通过轮询将 TcpConnection 对象分配给 subloop 处理。
-        // 2. mainloop 调用 queueInLoop 将回调加入 subloop（该回调需要 subloop 执行，但 subloop 还在 m_poller->poll() 处阻塞），queueInLoop 通过 wakeup() 将 subloop 唤醒。
+        // 2. 存储提交给当前 EventLoop 执行的回调任务 m_pendingFunctors。例如：mainloop 调用 queueInLoop 将回调加入 subloop（该回调需要 subloop 执行，但 subloop 还在 m_poller->poll() 处阻塞），queueInLoop 通过 wakeup() 将 subloop 唤醒。
         doPendingFunctors();
     }
 
@@ -95,7 +96,7 @@ void EventLoop::quit()
 
 void EventLoop::runInLoop(EventLoop::Functor cb)
 {
-    // 当前 EventLoop 中执行回调。
+    // 如果当前线程就是 EventLoop 所属线程，则直接执行回调。此时会在当前线程的调用栈中同步执行，天然不会和事件循环的其他流程冲突，因为同一个线程同一时刻只能执行一个函数。
     if (isInLoopThread())
     {
         cb();
@@ -109,6 +110,14 @@ void EventLoop::runInLoop(EventLoop::Functor cb)
 
 void EventLoop::queueInLoop(EventLoop::Functor cb)
 {
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_pendingFunctors.emplace_back(cb);
+    }
+
+    // !isInLoopThread()：表示当前调用 queueInLoop() 的线程不是目标 EventLoop 所属线程。例如：线程 A 调用 loopB->queueInLoop(cb)，希望线程 B 执行 cb。此时线程 B 可能阻塞在 poll() 中等待 IO 事件，需要通过 wakeup() 写入 eventfd 唤醒线程 B，使其及时执行 m_pendingFunctors 中的任务。另外，如果线程 B 当前正在处理 IO 事件，cb 会先进入 m_pendingFunctors 队列，等当前 IO 事件处理完成后，在 doPendingFunctors() 中执行，语义依旧不会被破坏。
+    // m_callingPendingFunctors：表示当前 EventLoop 正在执行 m_pendingFunctors 中的任务。如果执行任务过程中又调用 queueInLoop() 添加了新的任务，新任务不会出现在当前正在执行的任务列表中，需要等待下一次 doPendingFunctors() 执行。因此通过 wakeup() 唤醒 EventLoop，避免新任务等待下一次 IO 事件。
+    if (!isInLoopThread() || m_callingPendingFunctors) wakeup();
 }
 
 void EventLoop::wakeup()
