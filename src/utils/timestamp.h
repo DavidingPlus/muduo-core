@@ -9,7 +9,7 @@ class Timestamp
 
 public:
 
-    Timestamp() : m_microSecondsSinceEpoch(static_cast<int64_t>(0)) {}
+    Timestamp() = default;
 
     explicit Timestamp(int64_t microSecondsSinceEpoch) : m_microSecondsSinceEpoch(microSecondsSinceEpoch) {}
 
@@ -25,7 +25,7 @@ public:
 
 private:
 
-    int64_t m_microSecondsSinceEpoch;
+    int64_t m_microSecondsSinceEpoch = static_cast<int64_t>(0);
 };
 
 

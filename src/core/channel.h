@@ -27,7 +27,7 @@ public:
     using ReadEventCallback = std::function<void(const Timestamp &)>;
 
 
-    Channel(EventLoop *loop, int fd) : m_loop(loop), m_fd(fd), m_events(0), m_revents(0), m_index(-1), m_tied(false) {}
+    Channel(EventLoop *loop, int fd) : m_loop(loop), m_fd(fd) {}
 
     ~Channel() = default;
 
@@ -105,22 +105,28 @@ private:
 
 
     // 事件循环。
-    EventLoop *m_loop;
+    EventLoop *m_loop = nullptr;
 
     // fd，Poller 监听的对象。
-    const int m_fd;
+    const int m_fd = -1;
 
     // 注册 fd 感兴趣的事件。
-    int m_events;
+    int m_events = 0;
 
     // Poller 事件监听器实际监听到该 fd 发生的事件类型集合，当事件监听器监听到一个 fd 发生了什么事件，通过 setRevents() 函数来设置 revents 值。
-    int m_revents;
+    int m_revents = 0;
 
-    int m_index;
+    // m_index 代表 Channel 当前在 Poller 中的状态。
+    // 1. kNew：Channel 还没有添加到 Poller 中。第一次调用 updateChannel() 时，需要执行 EPOLL_CTL_ADD。
+    // 2. kAdded：Channel 已经注册到 Poller 中。修改关注事件时执行 EPOLL_CTL_MOD。
+    // 3. kDeleted：Channel 已经从 Poller 中删除。但是 Channel 对象仍然存在，再次添加时需要执行 EPOLL_CTL_ADD。
+    // 注意：m_index 不是数组下标，而是 Channel 和 Poller 之间同步状态的标记。初始值是 kNew，即 -1。
+    int m_index = -1;
 
+    // tie 机制的解释见上面的 tie() 函数。
     std::weak_ptr<void> m_tie;
 
-    bool m_tied;
+    bool m_tied = false;
 
     // 因为 channel 通道里可获知 fd 最终发生的具体的事件 events，所以它负责调用具体事件的回调操作。
     ReadEventCallback m_readCallback;

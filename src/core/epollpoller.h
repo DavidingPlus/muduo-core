@@ -47,10 +47,10 @@ private:
 
 
     // epoll_create 创建返回的 fd 保存在 m_epollfd 中。
-    int m_epollfd;
+    int m_epollfd = -1;
 
     // 用于存放 epoll_wait 返回的所有发生的事件的文件描述符事件集。
-    EventList m_events;
+    EventList m_events = EventList(kInitEventListSize);
 };
 
 

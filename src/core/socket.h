@@ -50,7 +50,7 @@ public:
 
 private:
 
-    const int m_sockfd;
+    const int m_sockfd = -1;
 };
 
 

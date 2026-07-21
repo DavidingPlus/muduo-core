@@ -63,7 +63,7 @@ protected:
 private:
 
     // 定义 Poller 所属的事件循环 EventLoop。
-    EventLoop *m_ownerLoop;
+    EventLoop *m_ownerLoop = nullptr;
 };
 
 

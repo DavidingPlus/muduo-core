@@ -39,7 +39,7 @@ public:
     // 初始预留的 readable 和 writable 数据空间大小。初始时 readableBytes 为 0，writableBytes 为 kInitialSize，这个是符合语义的。
     static constexpr size_t kInitialSize = 1024;
 
-    explicit Buffer(size_t initialSize = kInitialSize) : m_buffer(kPrependSize + initialSize), m_readerIndex(kPrependSize), m_writerIndex(kPrependSize) {}
+    explicit Buffer(size_t initialSize = kInitialSize) : m_buffer(kPrependSize + initialSize) {}
 
     ~Buffer() = default;
 
@@ -94,9 +94,9 @@ private:
 
     std::vector<char> m_buffer;
 
-    size_t m_readerIndex;
+    size_t m_readerIndex = kPrependSize;
 
-    size_t m_writerIndex;
+    size_t m_writerIndex = kPrependSize;
 };
 
 

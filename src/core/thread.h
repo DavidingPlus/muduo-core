@@ -21,7 +21,7 @@ public:
 
     using ThreadFunc = std::function<void()>;
 
-    explicit Thread(ThreadFunc func, const std::string &name = std::string()) : m_started(false), m_joined(false), m_tid(0), m_func(std::move(func)), m_name(name) { setDefaultName(); }
+    explicit Thread(ThreadFunc func, const std::string &name = std::string()) : m_func(std::move(func)), m_name(name) { setDefaultName(); }
 
     ~Thread();
 
@@ -45,16 +45,17 @@ private:
     // 已创建线程数量。static 达标所有 Thread 对象共享。用 atomic 保证多线程环境下保证递增操作安全。
     static std::atomic_int m_numCreated;
 
+
     // 标记线程是否已经启动。
-    bool m_started;
+    bool m_started = false;
 
     // 标记线程是否已经 join。
-    bool m_joined;
+    bool m_joined = false;
 
     std::shared_ptr<std::thread> m_thread;
 
     // Linux 线程 ID，在线程创建时再绑定。
-    pid_t m_tid;
+    pid_t m_tid = static_cast<pid_t>(0);
 
     // 线程回调函数。
     ThreadFunc m_func;
