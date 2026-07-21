@@ -6,6 +6,9 @@
 #include <functional>
 #include <memory>
 
+#include <sys/epoll.h>
+
+
 class Timestamp;
 class EventLoop;
 
@@ -21,10 +24,55 @@ class Channel
 public:
 
     using EventCallback = std::function<void()>;
+
     using ReadEventCallback = std::function<void(Timestamp)>;
 
 
+    Channel(EventLoop *loop, int fd);
+
+    ~Channel();
+
+    // 设置回调函数对象。一个文件描述符会发生可读、可写、关闭、错误事件。当发生这些事件后，就需要调用相应的处理函数来处理。外部通过调用上面这四个函数可以将事件处理函数放进 Channel 类中，当需要调用的时候就可以直接拿出来调用了。
+    void setReadCallback(ReadEventCallback cb) { m_readCallback = std::move(cb); }
+
+    void setWriteCallback(EventCallback cb) { m_writeCallback = std::move(cb); }
+
+    void setCloseCallback(EventCallback cb) { m_closeCallback = std::move(cb); }
+
+    void setErrorCallback(EventCallback cb) { m_errorCallback = std::move(cb); }
+
+    int fd() const { return m_fd; }
+
+    int events() const { return m_events; }
+
+    void setRevents(int revt) { m_revents = revt; }
+
+    // 返回 fd 当前的事件状态。
+    bool isNoneEvent() const { return m_events == kNoneEvent; }
+
+    bool isWriting() const { return m_events & kWriteEvent; }
+
+    bool isReading() const { return m_events & kReadEvent; }
+
+    int index() { return m_index; }
+
+    void setIndex(int idx) { m_index = idx; }
+
+
 private:
+
+    // static const：只是声明静态常量成员，真正的内存空间需要在 cpp 文件中定义。初始化发生在程序运行阶段。如果需要获取该变量的地址，必须保证 cpp 中存在定义。
+    // static constexpr：constexpr 表示该变量是编译期常量，必须在声明时完成初始化。编译器可以直接将它替换为对应的数值，不需要额外的内存空间。不需要在 cpp 文件中再次定义。适合表示不会改变的标志位、枚举值、配置常量等。
+
+    // 空事件。
+    static constexpr int kNoneEvent = 0;
+
+    // 读事件。
+    // EPOLLPRI：表示有紧急数据（Out-Of-Band Data，带外数据）可读。主要用于 TCP 的带外数据通知，例如接收到设置了 URG 标志的数据。普通 TCP 数据到达不会触发该事件，普通读事件使用 EPOLLIN。一般网络服务器很少使用。
+    static constexpr int kReadEvent = EPOLLIN | EPOLLPRI;
+
+    // 写事件。
+    static constexpr int kWriteEvent = EPOLLOUT;
 
 
     // 事件循环。
@@ -36,7 +84,7 @@ private:
     // 注册 fd 感兴趣的事件。
     int m_events;
 
-    // Poller 事件监听器实际监听到该 fd 发生的事件类型集合，当事件监听器监听到一个 fd 发生了什么事件，通过 set_revents() 函数来设置 revents 值。
+    // Poller 事件监听器实际监听到该 fd 发生的事件类型集合，当事件监听器监听到一个 fd 发生了什么事件，通过 setRevents() 函数来设置 revents 值。
     int m_revents;
 
     int m_index;
