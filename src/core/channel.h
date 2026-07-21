@@ -24,16 +24,16 @@ public:
 
     using EventCallback = std::function<void()>;
 
-    using ReadEventCallback = std::function<void(Timestamp)>;
+    using ReadEventCallback = std::function<void(const Timestamp &)>;
 
 
-    Channel(EventLoop *loop, int fd);
+    Channel(EventLoop *loop, int fd) : m_loop(loop), m_fd(fd), m_events(0), m_revents(0), m_index(-1), m_tied(false) {}
 
     ~Channel() = default;
 
     // fd 得到 Poller 通知以后，处理事件 handleEvent 在 EventLoop::loop() 中调用。
     // 当调用 epoll_wait() 后，可以得知事件监听器上哪些 Channel（文件描述符）发生了哪些事件，事件发生后自然就要调用这些 Channel 对应的处理函数。Channel::HandleEvent() 让每个发生了事件的 Channel 调用自己保管的事件处理函数。每个 Channel 会根据自己文件描述符实际发生的事件（通过 Channel 中的 revents 变量得知）和感兴趣的事件（通过 Channel 中的 events 变量得知）来选择调用 m_readCallback 和/或 m_writeCallback 和/或 m_closeCallback 和/或 m_errorCallback。
-    void handleEvent(Timestamp receiveTime);
+    void handleEvent(const Timestamp &receiveTime);
 
     // 设置回调函数对象。一个文件描述符会发生可读、可写、关闭、错误事件。当发生这些事件后，就需要调用相应的处理函数来处理。外部通过调用上面这四个函数可以将事件处理函数放进 Channel 类中，当需要调用的时候就可以直接拿出来调用了。
     void setReadCallback(ReadEventCallback cb) { m_readCallback = std::move(cb); }
@@ -86,7 +86,7 @@ private:
 
     void update();
 
-    void handleEventWithGuard(Timestamp receiveTime);
+    void handleEventWithGuard(const Timestamp &receiveTime);
 
 
     // static const：只是声明静态常量成员，真正的内存空间需要在 cpp 文件中定义。初始化发生在程序运行阶段。如果需要获取该变量的地址，必须保证 cpp 中存在定义。
