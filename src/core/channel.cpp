@@ -7,10 +7,23 @@
 
 void Channel::handleEvent(const Timestamp &receiveTime)
 {
+    if (m_tied)
+    {
+        std::shared_ptr<void> guard = m_tie.lock();
+        if (guard) handleEventWithGuard(receiveTime);
+
+        // 如果提升失败了，就不做任何处理，说明 Channel 的 TcpConnection 对象已经不存在了。
+    }
+    else
+    {
+        handleEventWithGuard(receiveTime);
+    }
 }
 
-void Channel::tie(const std::shared_ptr<void> &)
+void Channel::tie(const std::shared_ptr<void> &obj)
 {
+    m_tie = obj;
+    m_tied = true;
 }
 
 // update 和 remove -> EventLoop -> EpollPoller 更新 channel 在 poller 中的状态。当改变 channel 所表示的 fd 的 events 事件后，update 负责在 poller 里面更改 fd 相应的事件 epoll_ctl。
