@@ -79,4 +79,34 @@ void EPollPoller::fillActiveChannels(int numEvents, ChannelList *activeChannels)
 
 void EPollPoller::update(int operation, Channel *channel)
 {
+    int fd = channel->fd();
+
+    epoll_event event{};
+
+    event.events = channel->events();
+    // epoll_data 是联合体所以 data.fd 写了没有意义会被 data.ptr 覆盖。
+    // typedef union epoll_data
+    // {
+    //     void *ptr;
+    //     int fd;
+    //     uint32_t u32;
+    //     uint64_t u64;
+    // } epoll_data_t;
+    event.data.ptr = channel;
+
+    if (::epoll_ctl(m_epollfd, operation, fd, &event) < 0)
+    {
+        if (EPOLL_CTL_ADD == operation)
+        {
+            LOG_FATAL("epoll_ctl add error: {}", errno);
+        }
+        else if (EPOLL_CTL_MOD == operation)
+        {
+            LOG_FATAL("epoll_ctl mod error: {}", errno);
+        }
+        else
+        {
+            LOG_ERROR("epoll_ctl del error: {}", errno);
+        }
+    }
 }
