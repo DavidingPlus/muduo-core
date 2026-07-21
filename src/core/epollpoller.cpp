@@ -117,6 +117,18 @@ void EPollPoller::updateChannel(Channel *channel)
 
 void EPollPoller::removeChannel(Channel *channel)
 {
+    // updateChannel() 的 DEL：只是表示暂时不监听事件，Channel 对象还可能继续存在，状态变成 kDeleted，但还在哈希表 m_channels 中。
+    // removeChannel()：表示 Channel 生命周期结束，不再属于 Poller，从哈希表 m_channels 删除，并恢复初始状态 kNew。
+
+    int fd = channel->fd();
+    m_channels.erase(fd);
+
+    LOG_INFO("func={} -> fd=%{}", __FUNCTION__, fd);
+
+    int index = channel->index();
+    if (Channel::kAdded == index) update(EPOLL_CTL_DEL, channel);
+
+    channel->setIndex(Channel::kNew);
 }
 
 void EPollPoller::fillActiveChannels(int numEvents, ChannelList *activeChannels) const

@@ -26,8 +26,10 @@ public:
     // 当外部调用 poll 方法的时候，该方法底层其实是通过 epoll_wait 获取这个事件监听器上发生事件的 fd 及其对应发生的事件。我们知道每个 fd 都是由一个 Channel 封装的，通过哈希表 m_channels 可以根据 fd 找到封装这个 fd 的 Channel。将事件监听器监听到该 fd 发生的事件写进这个 Channel 中的 revents 成员变量中。然后把这个 Channel 装进 activeChannels 中（它是一个 vector<Channel*>）。这样，当外界调用完 poll 之后就能拿到事件监听器的监听结果（activeChannels）。这个  activeChannels 就是事件监听器监听到的发生事件的 fd，以及每个 fd 都发生了什么事件。
     Timestamp poll(int timeoutMs, ChannelList *activeChannels) override;
 
+    // 维护 Channel 和 epoll 的注册关系（ADD/MOD/DEL）。
     void updateChannel(Channel *channel) override;
 
+    // 彻底移除 Channel，让 Poller 不再管理这个 Channel。
     void removeChannel(Channel *channel) override;
 
 
