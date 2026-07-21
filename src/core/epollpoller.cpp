@@ -27,7 +27,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
     int numEvents = ::epoll_wait(m_epollfd, m_events.data(), static_cast<int>(m_events.size()), timeoutMs);
     if (numEvents > 0)
     {
-        LOG_DEBUG("%d events happend\n", numEvents);
+        LOG_DEBUG("{} events happend", numEvents);
 
         // 把监听到的 Channel 装进 activeChannels 中（它是一个 vector<Channel*>）。这样，当外界调用完 poll 之后就能拿到事件监听器的监听结果。（activeChannels）。
         fillActiveChannels(numEvents, activeChannels);
@@ -38,7 +38,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
     // 返回值为 0，代表超时。
     else if (0 == numEvents)
     {
-        LOG_DEBUG("%s timeout!", __FUNCTION__);
+        LOG_DEBUG("{} timeout!", __FUNCTION__);
     }
     else
     {
@@ -123,7 +123,7 @@ void EPollPoller::removeChannel(Channel *channel)
     int fd = channel->fd();
     m_channels.erase(fd);
 
-    LOG_INFO("func={} -> fd=%{}", __FUNCTION__, fd);
+    LOG_INFO("func={} -> fd={}", __FUNCTION__, fd);
 
     int index = channel->index();
     if (Channel::kAdded == index) update(EPOLL_CTL_DEL, channel);
