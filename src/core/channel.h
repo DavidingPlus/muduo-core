@@ -8,7 +8,6 @@
 
 #include <sys/epoll.h>
 
-
 class Timestamp;
 class EventLoop;
 
@@ -30,7 +29,11 @@ public:
 
     Channel(EventLoop *loop, int fd);
 
-    ~Channel();
+    ~Channel() = default;
+
+    // fd 得到 Poller 通知以后，处理事件 handleEvent 在 EventLoop::loop() 中调用。
+    // 当调用 epoll_wait() 后，可以得知事件监听器上哪些 Channel（文件描述符）发生了哪些事件，事件发生后自然就要调用这些 Channel 对应的处理函数。Channel::HandleEvent() 让每个发生了事件的 Channel 调用自己保管的事件处理函数。每个 Channel 会根据自己文件描述符实际发生的事件（通过 Channel 中的 revents 变量得知）和感兴趣的事件（通过 Channel 中的 events 变量得知）来选择调用 m_readCallback 和/或 m_writeCallback 和/或 m_closeCallback 和/或 m_errorCallback。
+    void handleEvent(Timestamp receiveTime);
 
     // 设置回调函数对象。一个文件描述符会发生可读、可写、关闭、错误事件。当发生这些事件后，就需要调用相应的处理函数来处理。外部通过调用上面这四个函数可以将事件处理函数放进 Channel 类中，当需要调用的时候就可以直接拿出来调用了。
     void setReadCallback(ReadEventCallback cb) { m_readCallback = std::move(cb); }
@@ -41,11 +44,26 @@ public:
 
     void setErrorCallback(EventCallback cb) { m_errorCallback = std::move(cb); }
 
+    // 防止当 channel 被手动 remove 掉，channel 还在执行回调操作。
+    void tie(const std::shared_ptr<void> &);
+
     int fd() const { return m_fd; }
 
     int events() const { return m_events; }
 
     void setRevents(int revt) { m_revents = revt; }
+
+    // 设置 fd 相应的事件状态，相当于 epoll_ctl add delete。
+    // 外部通过这几个函数来告知 Channel 你所监管的文件描述符都对哪些事件类型感兴趣，并把这个文件描述符及其感兴趣事件注册到事件监听器（IO 多路复用模块）上。这些函数里面都有一个 update() 私有成员方法，这个 update 其实本质上就是调用了 epoll_ctl()，真正注册到 epoll 事件中。
+    void enableReading() { m_events |= kReadEvent, update(); }
+
+    void disableReading() { m_events &= ~kReadEvent, update(); }
+
+    void enableWriting() { m_events |= kWriteEvent, update(); }
+
+    void disableWriting() { m_events &= ~kWriteEvent, update(); }
+
+    void disableAll() { m_events = kNoneEvent, update(); }
 
     // 返回 fd 当前的事件状态。
     bool isNoneEvent() const { return m_events == kNoneEvent; }
@@ -58,8 +76,18 @@ public:
 
     void setIndex(int idx) { m_index = idx; }
 
+    // 一个线程一个事件循环。
+    EventLoop *ownerLoop() { return m_loop; }
+
+    void remove();
+
 
 private:
+
+    void update();
+
+    void handleEventWithGuard(Timestamp receiveTime);
+
 
     // static const：只是声明静态常量成员，真正的内存空间需要在 cpp 文件中定义。初始化发生在程序运行阶段。如果需要获取该变量的地址，必须保证 cpp 中存在定义。
     // static constexpr：constexpr 表示该变量是编译期常量，必须在声明时完成初始化。编译器可以直接将它替换为对应的数值，不需要额外的内存空间。不需要在 cpp 文件中再次定义。适合表示不会改变的标志位、枚举值、配置常量等。
