@@ -151,4 +151,21 @@ void EventLoop::handleRead()
 
 void EventLoop::doPendingFunctors()
 {
+    std::vector<Functor> functors;
+    m_callingPendingFunctors = true;
+
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        // 将待执行任务交换到局部变量。
+        // 1. 避免死锁：functor() 中可能再次调用 queueInLoop() 提交新任务。如果此时仍然持有 m_mutex，queueInLoop() 会再次尝试获取同一把 mutex，而 std::mutex 不支持递归加锁，会导致当前线程等待自己释放锁，形成死锁。
+        // 2. 减少锁的占用时间，提高并发效率：mutex 只保护 m_pendingFunctors 的交换操作，不保护后续 functor() 的执行过程。避免执行耗时任务时长期占用锁，阻塞其他线程调用 queueInLoop()。
+        // 3. 保证新加入任务不会影响当前执行批次：当前批次任务交换到 functors 后，如果执行过程中又有新的任务通过 queueInLoop() 加入，新任务会进入新的 m_pendingFunctors 队列，等下一轮 doPendingFunctors() 再执行。同时通过交换所有权，把当前待执行任务整体搬走，让原队列 m_pendingFunctors 自然变为空，不影响后续语义。
+        functors.swap(m_pendingFunctors);
+    }
+
+    // 执行当前 loop 需要执行的回调操作。
+    for (auto &functor : functors) functor();
+
+    m_callingPendingFunctors = false;
 }
