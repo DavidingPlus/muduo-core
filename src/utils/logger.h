@@ -18,6 +18,7 @@
         logger.logFormatted(LogLevel::INFO, __VA_ARGS__); \
     } while (0)
 
+// ERROR：表示程序运行过程中发生了错误，但该错误通常不会导致程序立即失效。调用方仍然可以根据情况进行恢复，例如重试、降级处理或者忽略。示例：网络连接失败、文件读取失败等。
 #define LOG_ERROR(...)                                     \
     do                                                     \
     {                                                      \
@@ -25,11 +26,13 @@
         logger.logFormatted(LogLevel::ERROR, __VA_ARGS__); \
     } while (0)
 
+// FATAL：表示发生了无法恢复的致命错误，程序已经无法继续保证正确运行。输出日志后应该立即终止程序（通常调用 abort()），方便定位问题。示例：核心组件初始化失败、内存结构损坏、关键资源创建失败等。
 #define LOG_FATAL(...)                                     \
     do                                                     \
     {                                                      \
         Logger &logger = Logger::instance();               \
         logger.logFormatted(LogLevel::FATAL, __VA_ARGS__); \
+        std::abort();                                      \
     } while (0)
 
 #if MUDUO_CORE_CONFIG_DEBUG
