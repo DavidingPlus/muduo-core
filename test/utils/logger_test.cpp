@@ -153,6 +153,34 @@ TEST_F(LoggerTest, LogInfoMacroWithoutVariadicArgs)
     EXPECT_NE(output.find("plain info message"), std::string::npos);
 }
 
+TEST_F(LoggerTest, LogInfoMacroWithPointer)
+{
+    int value = 42;
+
+    LOG_INFO("pointer {}", fmt::ptr(&value));
+
+    auto expectedPtr = fmt::format("{}", fmt::ptr(&value));
+    auto output = captureOutput([&]()
+                                { LOG_INFO("pointer {}", fmt::ptr(&value)); });
+
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
+    EXPECT_NE(output.find(expectedPtr), std::string::npos);
+}
+
+TEST_F(LoggerTest, LogInfoMacroWithNullPointer)
+{
+    int *ptr = nullptr;
+
+    LOG_INFO("pointer {}", fmt::ptr(ptr));
+
+    auto expectedPtr = fmt::format("{}", fmt::ptr(ptr));
+    auto output = captureOutput([&]()
+                                { LOG_INFO("pointer {}", fmt::ptr(ptr)); });
+
+    EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
+    EXPECT_NE(output.find(expectedPtr), std::string::npos);
+}
+
 TEST_F(LoggerTest, LogErrorMacro)
 {
     LOG_ERROR("error {}", 456);
