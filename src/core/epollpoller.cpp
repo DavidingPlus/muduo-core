@@ -57,31 +57,62 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
 void EPollPoller::updateChannel(Channel *channel)
 {
     /*
-                updateChannel()
-                      |
-                      |
-                    kNew
-                      |
-                EPOLL_CTL_ADD
-                      |
-                      v
-                   kAdded
-                  /      \
-                 /        \
-        无关注事件          修改事件
-        EPOLL_CTL_DEL      EPOLL_CTL_MOD
-             |                 |
-             v                 |
-          kDeleted <------------
-             |
-             |
-       再次关注事件
-             |
-       EPOLL_CTL_ADD
-             |
-             v
-          kAdded
+                     updateChannel()
+                           |
+                           v
+                         kNew
+                           |
+                           | EPOLL_CTL_ADD
+                           |
+                           v
+                        kAdded
+                       /       \
+             有关注事件 /         \ 无关注事件
+                     /           \
+        EPOLL_CTL_MOD             EPOLL_CTL_DEL
+             |                         |
+             |                         |
+             v                         v
+          kAdded                   kDeleted
+                                       |
+                                       |
+                                       |
+                                       | EPOLL_CTL_ADD
+                                       |
+                                       v
+                                    kAdded
     */
+
+    const int index = channel->index();
+    LOG_INFO("func={} -> fd={} events={} index={}", __FUNCTION__, channel->fd(), channel->events(), index);
+
+    if (Channel::kNew == index || Channel::kDeleted == index)
+    {
+        // 如果是 KNew 状态，额外需要将新的 Channel 添加到 Poller 的哈希表中。kDeleted 因之前添加过则不需要。
+        if (Channel::kNew == index)
+        {
+            int fd = channel->fd();
+            m_channels[fd] = channel;
+        }
+
+        channel->setIndex(Channel::kAdded);
+        update(EPOLL_CTL_ADD, channel);
+    }
+    // channel 当前是 KAdded 状态。
+    else
+    {
+        int fd = channel->fd();
+        // 有关注事件则 EPOLL_CTL_MOD，没关注事件则 EPOLL_CTL_DEL 并修改状态为 kDeleted。
+        if (channel->isNoneEvent())
+        {
+            update(EPOLL_CTL_DEL, channel);
+            channel->setIndex(Channel::kDeleted);
+        }
+        else
+        {
+            update(EPOLL_CTL_MOD, channel);
+        }
+    }
 }
 
 void EPollPoller::removeChannel(Channel *channel)
