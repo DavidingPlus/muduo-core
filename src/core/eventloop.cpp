@@ -57,14 +57,54 @@ EventLoop::~EventLoop()
 
 void EventLoop::loop()
 {
+    m_looping = true;
+    m_quit = false;
+
+    LOG_INFO("EventLoop {} start looping", fmt::ptr(this));
+
+    while (!m_quit)
+    {
+        m_activeChannels.clear();
+        m_pollReturnTime = m_poller->poll(kPollTimeMs, &m_activeChannels);
+
+        // Poller 监听哪些 channel 发生了事件 然后上报给 EventLoop，通知 channel 处理相应的事件。
+        for (Channel *channel : m_activeChannels) channel->handleEvent(m_pollReturnTime);
+
+        // 执行当前 EventLoop 事件循环需要处理的回调操作。对于线程数 >=2 的情况，IO 线程 mainloop(mainReactor) 主要工作：
+        // 1. accept 接收连接，将 accept 返回的 connfd 打包为 Channel，TcpServer::newConnection 通过轮询将 TcpConnection 对象分配给 subloop 处理。
+        // 2. mainloop 调用 queueInLoop 将回调加入 subloop（该回调需要 subloop 执行，但 subloop 还在 m_poller->poll() 处阻塞），queueInLoop 通过 wakeup() 将 subloop 唤醒。
+        doPendingFunctors();
+    }
+
+    LOG_INFO("EventLoop {} stop looping", fmt::ptr(this));
+
+    m_looping = false;
 }
 
 void EventLoop::quit()
 {
+    // 退出事件循环。
+    // 1. 如果 loop 在自己的线程中调用 quit 成功了，说明当前线程已经执行完毕了 loop() 函数的 m_poller->poll 并退出。
+    // 2. 如果不是当前 EventLoop 所属线程中调用 quit 退出 EventLoop，需要唤醒 EventLoop 所属线程的 epoll_wait。比如在一个 subloop(worker) 中调用 mainloop(IO) 的 quit 时，需要唤醒 mainloop(IO) 的 m_poller->poll 让其执行完 loop() 函数。
+    // 注意：正常情况下 mainloop 负责请求连接，将回调写入 subloop 中，通过生产者消费者模型即可实现线程安全的队列。但是 muduo 通过 wakeup() 机制，使用 eventfd 创建的 m_wakeupFd 进行唤醒，使得 mainloop 和 subloop 之间能够进行通信。
+
+    m_quit = true;
+
+    if (!isInLoopThread()) wakeup();
 }
 
 void EventLoop::runInLoop(EventLoop::Functor cb)
 {
+    // 当前 EventLoop 中执行回调。
+    if (isInLoopThread())
+    {
+        cb();
+    }
+    // 在非当前 EventLoop 线程中执行 cb，就需要唤醒 EventLoop 所在线程执行 cb。
+    else
+    {
+        queueInLoop(cb);
+    }
 }
 
 void EventLoop::queueInLoop(EventLoop::Functor cb)

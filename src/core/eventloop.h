@@ -39,7 +39,7 @@ public:
 
     Timestamp pollReturnTime() const { return m_pollReturnTime; }
 
-    // 在当前 loop 中执行。
+    // 在当前 loop 中执行 cb，若在当前 EventLoop 中执行回调，若在非当前 EventLoop 线程中执行 cb，就需要唤醒 EventLoop 所在线程执行 cb。
     void runInLoop(Functor cb);
 
     // 把上层注册的回调函数 cb 放入队列中，唤醒 loop 所在的线程执行 cb。
@@ -86,6 +86,11 @@ private:
 
 
     using ChannelList = std::vector<Channel *>;
+
+
+    // 定义默认的 Poller IO 复用接口的超时时间，10000 毫秒，即 10 秒钟。
+    static constexpr int kPollTimeMs = 10000;
+
 
     // 原子操作，底层通过 CAS 实现。
 
