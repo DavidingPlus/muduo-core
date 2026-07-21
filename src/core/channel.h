@@ -44,7 +44,8 @@ public:
 
     void setErrorCallback(EventCallback cb) { m_errorCallback = std::move(cb); }
 
-    // Channel 的 tie() 方法什么时候调用过？TcpConnection -> channel。Channel 与 TcpConnection 存在生命周期依赖关系。Channel 保存 TcpConnection 的回调函数，如果 TcpConnection 已经销毁，但 epoll 仍然返回该 Channel 的事件，则执行回调会访问悬空对象。我们需要保证 Channel 执行事件回调期间，TcpConnection 生命周期不会结束。tie() 使用 weak_ptr 关联 TcpConnection，在事件处理前通过 lock() 临时提升为 shared_ptr，保证执行回调期间 TcpConnection 对象一定存在。使用 weak_ptr 而不是 shared_ptr，是为了避免 Channel 和 TcpConnection 之间形成循环引用。
+    // Channel 的 tie() 方法什么时候调用过？TcpConnection -> channel。Channel 作为 TcpConnection 的成员，总是随 TcpConnection 的销毁而销毁。因此，Channel 不会在 TcpConnection 之后存在，即 Channel 与 TcpConnection 存在生命周期依赖关系。Channel 保存 TcpConnection 的回调函数，如果 TcpConnection 已经销毁，但 epoll 仍然返回该 Channel 的事件，则执行回调会访问悬空对象。我们需要保证 Channel 执行事件回调期间，TcpConnection 生命周期不会结束。
+    // tie() 提供线程安全保护，防止 EventLoop 在 TcpConnection 已销毁后调用 Channel 的回调函数。具体而言，使用 weak_ptr 关联 TcpConnection，只观察 TcpConnection 是否还存在，在事件处理前通过 lock() 临时提升为 shared_ptr，保证执行回调期间 TcpConnection 对象一定存在。使用 weak_ptr 而不是 shared_ptr，是为了避免 Channel 和 TcpConnection 之间形成循环引用。
     void tie(const std::shared_ptr<void> &obj);
 
     int fd() const { return m_fd; }
