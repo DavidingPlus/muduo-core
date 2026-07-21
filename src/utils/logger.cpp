@@ -37,8 +37,8 @@ void Logger::log(LogLevel level, const std::string &msg)
 
     {
         LogColorGuard guard(level);
-        std::cout << levelText + '(' + Timestamp::now().toString() + "): ";
+        std::cout << levelText + '[' + Timestamp::now().toString() + "]";
     }
 
-    std::cout << msg << std::endl;
+    std::cout << ' ' << msg << std::endl;
 }
