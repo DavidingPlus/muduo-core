@@ -3,6 +3,9 @@
 
 #include "globalmacros.h"
 
+#include <memory>
+
+class Poller;
 class Channel;
 
 
@@ -24,6 +27,8 @@ public:
     bool hasChannel(Channel *channel);
 
 private:
+
+    std::unique_ptr<Poller> m_poller;
 };
 
 

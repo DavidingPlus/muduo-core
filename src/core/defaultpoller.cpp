@@ -1,4 +1,5 @@
 #include "poller.h"
+#include "epollpoller.h"
 
 #include <string>
 #include <cstdlib>
@@ -16,6 +17,6 @@ Poller *Poller::newDefaultPoller(EventLoop *loop)
     // 默认使用 Epoll。
     else
     {
-        // return new EPollPoller(loop); // 生成 epoll 的实例。
+        return new EPollPoller(loop); // 生成 epoll 的实例。
     }
 }
