@@ -30,6 +30,7 @@ public:
 
 private:
 
+    // 这个方法，是在单独的新线程里运行的。
     void threadFunc();
 
     EventLoop *m_loop = nullptr;
