@@ -47,16 +47,16 @@ private:
     void handleRead();
 
 
-    // Acceptor 用的就是用户定义的那个 baseLoop，也称作 mainLoop。
-    EventLoop *m_loop = nullptr;
+    // 监听套接字的 fd 由哪个 EventLoop 负责循环监听以及处理相应事件，其实就是 mainLoop。
+    EventLoop *m_mainLoop = nullptr;
 
-    // 专门用于接收新连接的 socket。
+    // 服务器监听套接字的 socket。
     Socket m_acceptSocket;
 
-    // 专门用于监听新连接的 channel。
+    // Channel 对象，把 acceptSocket 及其感兴趣事件和事件对应的处理函数都封装进去。
     Channel m_acceptChannel;
 
-    // 新连接的回调函数。
+    // 新连接对象的回调函数。TcpServer 构造函数中将 TcpServer::newConnection() 函数注册给了这个成员变量。TcpServer::newConnection() 函数的功能是公平的选择一个 subEventLoop，并把已经接受的连接分发给这个 subEventLoop。
     NewConnectionCallback m_newConnectionCallback;
 
     // 是否在监听。

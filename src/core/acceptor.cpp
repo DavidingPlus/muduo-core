@@ -15,7 +15,7 @@ int Acceptor::createSocketNonblocking()
 }
 
 Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reuseport)
-    : m_loop(loop), m_acceptSocket(createSocketNonblocking()), m_acceptChannel(m_loop, m_acceptSocket.fd())
+    : m_mainLoop(loop), m_acceptSocket(createSocketNonblocking()), m_acceptChannel(m_mainLoop, m_acceptSocket.fd())
 {
     m_acceptSocket.setReuseAddr(true);
     m_acceptSocket.setReusePort(reuseport);
