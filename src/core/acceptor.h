@@ -28,10 +28,10 @@ public:
     ~Acceptor();
 
     // 设置新连接的回调函数。
-    void setNewConnectionCallback(const NewConnectionCallback &cb) { m_NewConnectionCallback = cb; }
+    void setNewConnectionCallback(const NewConnectionCallback &cb) { m_newConnectionCallback = cb; }
 
     // 判断是否在监听。
-    bool listenning() const { return m_listenning; }
+    bool listening() const { return m_listening; }
 
     // 监听本地端口。
     void listen();
@@ -57,10 +57,10 @@ private:
     Channel m_acceptChannel;
 
     // 新连接的回调函数。
-    NewConnectionCallback m_NewConnectionCallback;
+    NewConnectionCallback m_newConnectionCallback;
 
     // 是否在监听。
-    bool m_listenning = false;
+    bool m_listening = false;
 };
 
 #endif
