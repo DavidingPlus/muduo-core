@@ -16,7 +16,8 @@ class Channel;
 
 
 // Poller 是封装了和事件监听有关的方法和成员，调用一次 Poller::poll() 它就能给你返回事件监听器的监听结果（发生事件的 fd 及其发生的事件）。作为一个网络服务器，需要有持续监听、持续获取监听结果、持续处理监听结果对应的事件的能力，也就是我们需要循环的去调用 Poller::poll() 方法获取实际发生事件的 Channel 集合，然后调用这些 Channel 里面保管的不同类型事件的处理函数（调用 Channel::HandlerEvent() 方法）。
-// EventLoop 就是负责实现“循环”，负责驱动“循环”的重要模块。Channel 和 Poller 相当于 EventLoop 的手下，EventLoop 整合封装了二者并向上提供了更方便的接口来使用。
+// EventLoop 就是负责实现“循环”，负责驱动“循环”的重要模块。Channel 和 Poller 相当于 EventLoop 的手下，EventLoop 整合封装了二者并向上提供了更方便的接口来使用。每一个 EventLoop 都绑定了一个线程（一对一绑定），这种运行模式是 Muduo 库的特色！！充份利用了多核 cpu 的能力，每一个核的线程负责循环监听一组文件描述符的集合。
+// 总的来说，EventLoop 起到一个驱动循环的功能，Poller 负责从事件监听器上获取监听结果。而 Channel 类则在其中起到了将 fd 及其相关属性封装的作用，将 fd 及其感兴趣事件和发生的事件以及不同事件对应的回调函数封装在一起，这样在各个模块中传递更加方便。接着 EventLoop 调用 EventLoop::loop() 开启事件循环。
 class EventLoop
 {
 

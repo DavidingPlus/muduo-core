@@ -57,6 +57,9 @@ EventLoop::~EventLoop()
 
 void EventLoop::loop()
 {
+    // 每个 EventLoop 对象都唯一绑定了一个线程，这个线程其实就在一直执行这个函数里面的 while 循环，这个 while 循环的大致逻辑比较简单。就是调用 Poller:poll() 方法获取事件监听器上的监听结果。接下来在 loop 里面就会调用监听结果中每一个 Channel 的处理函数 HandlerEvent()。
+    // 每一个 Channel 的处理函数会根据 Channel 类中封装的实际发生的事件，执行 Channel 类中封装的各事件处理函数。比如一个 Channel 发生了可读事件，可写事件，则这个 Channel 的 HandlerEvent() 就会调用提前注册在这个 Channel 的可读事件和可写事件处理函数，又比如另一个 Channel 只发生了可读事件，那么 HandlerEvent() 就只会调用提前注册在这个 Channel 中的可读事件处理函数。
+
     m_looping = true;
     m_quit = false;
 
