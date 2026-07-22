@@ -22,7 +22,8 @@ target("tests")
     add_deps("muduo-core")
     add_packages("gtest")
 
-    on_load(function ()
+    before_build(function ()
+        os.tryrm("$(builddir)/$(plat)/$(arch)/$(mode)/test/gtest")
         os.mkdir("$(builddir)/$(plat)/$(arch)/$(mode)/test/gtest")
     end)
 
