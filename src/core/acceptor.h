@@ -22,6 +22,7 @@ public:
 
     using NewConnectionCallback = std::function<void(int sockfd, const InetAddress &)>;
 
+
     Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reuseport);
 
     ~Acceptor();
@@ -47,7 +48,7 @@ private:
 
 
     // Acceptor 用的就是用户定义的那个 baseLoop，也称作 mainLoop。
-    EventLoop *m_loop;
+    EventLoop *m_loop = nullptr;
 
     // 专门用于接收新连接的 socket。
     Socket m_acceptSocket;
@@ -59,7 +60,7 @@ private:
     NewConnectionCallback m_NewConnectionCallback;
 
     // 是否在监听。
-    bool m_listenning;
+    bool m_listenning = false;
 };
 
 #endif
