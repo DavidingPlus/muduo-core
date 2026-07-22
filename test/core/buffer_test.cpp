@@ -12,6 +12,7 @@
 namespace
 {
 
+    // 用 pipe 提供一个最简单的读写 fd，避免依赖网络栈。
     class Pipe
     {
 
@@ -41,6 +42,7 @@ namespace
 } // namespace
 
 
+// 验证 Buffer 初始时没有可读数据，读写指针位于同一位置。
 TEST(BufferTest, DefaultState)
 {
     Buffer buffer;
@@ -50,6 +52,7 @@ TEST(BufferTest, DefaultState)
     EXPECT_EQ(buffer.peek(), buffer.beginWrite());
 }
 
+// 验证 append 后可读数据增加，retrieve 部分字节后读指针前移。
 TEST(BufferTest, AppendAndRetrievePartialData)
 {
     Buffer buffer;
@@ -67,6 +70,7 @@ TEST(BufferTest, AppendAndRetrievePartialData)
     EXPECT_EQ(std::string(buffer.peek(), buffer.readableBytes()), "llo");
 }
 
+// 验证 retrieveAll() 会把 Buffer 恢复到初始空状态。
 TEST(BufferTest, RetrieveAllResetsIndices)
 {
     Buffer buffer;
@@ -81,6 +85,7 @@ TEST(BufferTest, RetrieveAllResetsIndices)
     EXPECT_EQ(buffer.peek(), buffer.beginWrite());
 }
 
+// 验证 retrieveAsString() 会消费指定字节，并保留剩余内容。
 TEST(BufferTest, RetrieveAsStringConsumesRequestedBytes)
 {
     Buffer buffer;
@@ -97,6 +102,7 @@ TEST(BufferTest, RetrieveAsStringConsumesRequestedBytes)
     EXPECT_EQ(buffer.writableBytes(), Buffer::kInitialSize);
 }
 
+// 验证可写空间不足时，Buffer 会优先复用已消费空间而不是立刻扩容。
 TEST(BufferTest, EnsureWritableBytesReusesConsumedSpaceWithoutGrowing)
 {
     Buffer buffer(16);
@@ -117,6 +123,7 @@ TEST(BufferTest, EnsureWritableBytesReusesConsumedSpaceWithoutGrowing)
     EXPECT_EQ(buffer.writableBytes(), 6);
 }
 
+// 验证当总空闲空间不够时，Buffer 会真正扩容。
 TEST(BufferTest, EnsureWritableBytesGrowsWhenTotalFreeSpaceIsInsufficient)
 {
     Buffer buffer(8);
@@ -138,6 +145,7 @@ TEST(BufferTest, EnsureWritableBytesGrowsWhenTotalFreeSpaceIsInsufficient)
     EXPECT_EQ(buffer.writableBytes(), 0);
 }
 
+// 验证 readFd() 在写空间足够时直接把 fd 数据读入 Buffer。
 TEST(BufferTest, ReadFdAppendsWhenWritableSpaceIsEnough)
 {
     Pipe pipe;
@@ -155,6 +163,7 @@ TEST(BufferTest, ReadFdAppendsWhenWritableSpaceIsEnough)
     EXPECT_EQ(std::string(buffer.peek(), buffer.readableBytes()), payload);
 }
 
+// 验证 readFd() 在写空间不足时会借助额外缓冲区读取完整数据。
 TEST(BufferTest, ReadFdUsesExtraBufferWhenPayloadExceedsWritableSpace)
 {
     Pipe pipe;
@@ -172,6 +181,7 @@ TEST(BufferTest, ReadFdUsesExtraBufferWhenPayloadExceedsWritableSpace)
     EXPECT_EQ(std::string(buffer.peek(), buffer.readableBytes()), payload);
 }
 
+// 验证 readFd() 出错时会把 errno 透传到调用者。
 TEST(BufferTest, ReadFdStoresErrnoOnFailure)
 {
     Buffer buffer;
@@ -181,6 +191,7 @@ TEST(BufferTest, ReadFdStoresErrnoOnFailure)
     EXPECT_EQ(savedErrno, EBADF);
 }
 
+// 验证 writeFd() 只发送当前可读数据，但不会消费它们。
 TEST(BufferTest, WriteFdWritesReadableBytesWithoutConsumingThem)
 {
     Pipe pipe;
@@ -201,6 +212,7 @@ TEST(BufferTest, WriteFdWritesReadableBytesWithoutConsumingThem)
     EXPECT_EQ(received, payload);
 }
 
+// 验证 writeFd() 出错时同样会返回 errno。
 TEST(BufferTest, WriteFdStoresErrnoOnFailure)
 {
     Buffer buffer;

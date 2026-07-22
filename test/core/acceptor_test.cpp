@@ -29,6 +29,7 @@ using namespace std::chrono_literals;
 namespace
 {
 
+    // RAII 包装 fd，避免测试里的临时 socket 泄漏。
     class ScopedFd
     {
 
@@ -56,6 +57,7 @@ namespace
         int m_fd = -1;
     };
 
+    // 保存监听 socket 的关键信息，便于直接断言内核状态。
     struct ListeningSocketInfo
     {
         int fd = -1;
@@ -67,6 +69,7 @@ namespace
         bool cloexec = false;
     };
 
+    // 保存 accept 回调里观察到的连接信息，便于回传到主线程断言。
     struct AcceptedConnectionInfo
     {
         int fd = -1;
@@ -84,6 +87,7 @@ namespace
         return fd;
     }
 
+    // 发起到本地监听端口的 TCP 连接。
     void connectToPort(int fd, uint16_t port)
     {
         sockaddr_in serverAddr{};
@@ -93,6 +97,7 @@ namespace
         ASSERT_EQ(::connect(fd, reinterpret_cast<sockaddr *>(&serverAddr), sizeof(serverAddr)), 0);
     }
 
+    // 从 /proc/self/fd 扫描当前进程里正在监听的 IPv4 socket。
     std::optional<ListeningSocketInfo> findListeningSocketInfo()
     {
         DIR *dir = ::opendir("/proc/self/fd");
@@ -101,6 +106,7 @@ namespace
         std::optional<ListeningSocketInfo> result;
         while (dirent *entry = ::readdir(dir))
         {
+            // 跳过目录项和无法解析成 fd 的条目。
             if (0 == std::strcmp(entry->d_name, ".") || 0 == std::strcmp(entry->d_name, "..")) continue;
 
             char *end = nullptr;
@@ -187,6 +193,7 @@ namespace
 } // namespace
 
 
+// 验证构造后 listen() 会真正创建并暴露一个已绑定的监听 socket。
 TEST(AcceptorTest, ConstructorBindsAndListenPublishesSocketOptions)
 {
     EventLoop loop;
@@ -194,6 +201,7 @@ TEST(AcceptorTest, ConstructorBindsAndListenPublishesSocketOptions)
 
     EXPECT_FALSE(acceptor.listening());
 
+    // listen() 之后再去扫描 /proc/self/fd，确认内核侧状态已经建立。
     acceptor.listen();
 
     EXPECT_TRUE(acceptor.listening());
@@ -209,6 +217,7 @@ TEST(AcceptorTest, ConstructorBindsAndListenPublishesSocketOptions)
     EXPECT_TRUE(info->cloexec);
 }
 
+// 验证重复调用 listen() 不会重复创建监听 socket。
 TEST(AcceptorTest, ListenIsIdempotentAndKeepsSingleListeningSocket)
 {
     EventLoop loop;
@@ -225,6 +234,7 @@ TEST(AcceptorTest, ListenIsIdempotentAndKeepsSingleListeningSocket)
     EXPECT_EQ(after, 1);
 }
 
+// 验证新连接回调能收到对端地址，并且 accept 出来的 fd 已配置为非阻塞和 CLOEXEC。
 TEST(AcceptorTest, AcceptCallbackReceivesPeerAddressAndNonblockingFd)
 {
     std::promise<uint16_t> portPromise;
@@ -232,12 +242,14 @@ TEST(AcceptorTest, AcceptCallbackReceivesPeerAddressAndNonblockingFd)
     std::promise<pid_t> loopTidPromise;
     std::promise<void> readyPromise;
 
+    // 单独起一个 loop 线程，模拟真实服务端的 accept 流程。
     std::thread loopThread([&]()
                            {
                                EventLoop loop;
                                const pid_t loopTid = CurrentThread::tid();
                                Acceptor acceptor(&loop, InetAddress(0, "127.0.0.1"), false);
 
+                               // 连接到来后，把 accept 结果和线程信息一起回传给主线程。
                                acceptor.setNewConnectionCallback([&](int sockfd, const InetAddress &peerAddr)
                                                                  {
                                                                      int fdFlags = ::fcntl(sockfd, F_GETFD);
@@ -280,6 +292,7 @@ TEST(AcceptorTest, AcceptCallbackReceivesPeerAddressAndNonblockingFd)
     loopThread.join();
 }
 
+// 验证 Acceptor 能连续接收多个连接，并分别回调每个新 fd。
 TEST(AcceptorTest, AcceptCallbackHandlesMultipleConnections)
 {
     std::promise<uint16_t> portPromise;
@@ -288,11 +301,13 @@ TEST(AcceptorTest, AcceptCallbackHandlesMultipleConnections)
     std::mutex mutex;
     std::vector<AcceptedConnectionInfo> accepted;
 
+    // worker 线程持续 accept，直到收到两个连接再退出 loop。
     std::thread loopThread([&]()
                            {
                                EventLoop loop;
                                Acceptor acceptor(&loop, InetAddress(0, "127.0.0.1"), false);
 
+                               // 连续 accept 两次，确认回调会被多次触发。
                                acceptor.setNewConnectionCallback([&](int sockfd, const InetAddress &peerAddr)
                                                                  {
                                                                      int fdFlags = ::fcntl(sockfd, F_GETFD);
@@ -342,12 +357,14 @@ TEST(AcceptorTest, AcceptCallbackHandlesMultipleConnections)
     ::close(accepted[1].fd);
 }
 
+// 验证没有设置回调时，Acceptor 会自动关闭已 accept 的连接。
 TEST(AcceptorTest, NoCallbackClosesAcceptedConnection)
 {
     std::promise<uint16_t> portPromise;
     std::promise<void> readyPromise;
     std::promise<EventLoop *> loopPromise;
 
+    // 不设置回调，直接验证 Acceptor 的兜底关闭逻辑。
     std::thread loopThread([&]()
                            {
                                EventLoop loop;

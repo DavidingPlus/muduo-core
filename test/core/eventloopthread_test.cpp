@@ -15,6 +15,7 @@
 using namespace std::chrono_literals;
 
 
+// 验证 startLoop() 返回的 EventLoop 可用，且实际运行在工作线程上。
 TEST(EventLoopThreadTest, StartLoopReturnsUsableLoopRunningOnWorkerThread)
 {
     const pid_t mainTid = CurrentThread::tid();
@@ -29,6 +30,7 @@ TEST(EventLoopThreadTest, StartLoopReturnsUsableLoopRunningOnWorkerThread)
     ASSERT_NE(loop, nullptr);
     EXPECT_FALSE(loop->isInLoopThread());
 
+    // 把校验放进 loop 回调里，确认它确实跑在 worker 线程。
     loop->queueInLoop([&]()
                       {
                           callbackTid.set_value(CurrentThread::tid());
@@ -42,6 +44,7 @@ TEST(EventLoopThreadTest, StartLoopReturnsUsableLoopRunningOnWorkerThread)
     EXPECT_TRUE(callbackInLoopThreadFuture.get());
 }
 
+// 验证初始化回调只执行一次，并且拿到的就是 startLoop 返回的那个 loop。
 TEST(EventLoopThreadTest, InitCallbackRunsOnceOnWorkerThreadAndSeesReturnedLoop)
 {
     const pid_t mainTid = CurrentThread::tid();
@@ -69,6 +72,7 @@ TEST(EventLoopThreadTest, InitCallbackRunsOnceOnWorkerThreadAndSeesReturnedLoop)
     EXPECT_TRUE(callbackInLoopThreadFuture.get());
 }
 
+// 验证 startLoop() 会等待初始化回调结束后才返回。
 TEST(EventLoopThreadTest, StartLoopWaitsForInitCallbackToFinish)
 {
     std::promise<void> callbackEntered;
@@ -76,6 +80,7 @@ TEST(EventLoopThreadTest, StartLoopWaitsForInitCallbackToFinish)
     auto callbackEnteredFuture = callbackEntered.get_future();
     std::shared_future<void> allowContinue = releaseCallback.get_future().share();
 
+    // 用外层 async 调 startLoop()，观察它是否会被初始化回调阻塞住。
     EventLoopThread loopThread([&](EventLoop *)
                                {
                                    callbackEntered.set_value();
@@ -96,12 +101,14 @@ TEST(EventLoopThreadTest, StartLoopWaitsForInitCallbackToFinish)
     loop->quit();
 }
 
+// 验证初始化回调中调用 runInLoop 会立即在该工作线程内执行。
 TEST(EventLoopThreadTest, InitCallbackCanRunWorkImmediatelyInLoopThread)
 {
     std::vector<int> order;
     std::promise<pid_t> runInLoopTid;
     auto runInLoopTidFuture = runInLoopTid.get_future();
 
+    // 初始化回调里直接投递任务，验证它会在同一 worker 线程内立即执行。
     EventLoopThread loopThread([&](EventLoop *loop)
                                {
                                    order.push_back(1);
@@ -124,6 +131,7 @@ TEST(EventLoopThreadTest, InitCallbackCanRunWorkImmediatelyInLoopThread)
     EXPECT_NE(runInLoopTidFuture.get(), CurrentThread::tid());
 }
 
+// 验证从外部线程 runInLoop，任务最终会落到线程拥有的 loop 上执行。
 TEST(EventLoopThreadTest, RunInLoopFromCallerThreadExecutesOnOwnedLoopThread)
 {
     std::promise<pid_t> initTid;
@@ -140,6 +148,7 @@ TEST(EventLoopThreadTest, RunInLoopFromCallerThreadExecutesOnOwnedLoopThread)
 
     ASSERT_NE(loop, nullptr);
 
+    // 从外部线程发起 runInLoop，让它回到 owner loop 执行。
     loop->runInLoop([&]()
                     {
                         runInLoopTid.set_value(CurrentThread::tid());
@@ -150,6 +159,7 @@ TEST(EventLoopThreadTest, RunInLoopFromCallerThreadExecutesOnOwnedLoopThread)
     EXPECT_EQ(runInLoopTidFuture.get(), initTidFuture.get());
 }
 
+// 验证析构时会先退出 loop，并等待正在运行的回调收尾。
 TEST(EventLoopThreadTest, DestructorQuitsLoopAndWaitsForRunningCallback)
 {
     std::promise<void> callbackStarted;
@@ -164,6 +174,7 @@ TEST(EventLoopThreadTest, DestructorQuitsLoopAndWaitsForRunningCallback)
 
     ASSERT_NE(loop, nullptr);
 
+    // 让析构发生在 callback 运行中，观察它是否会等待回调退出。
     loop->queueInLoop([&]()
                       {
                           callbackStarted.set_value();

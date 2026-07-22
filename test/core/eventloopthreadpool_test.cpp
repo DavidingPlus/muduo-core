@@ -22,6 +22,7 @@ using namespace std::chrono_literals;
 namespace
 {
 
+    // 把 vector 转成 set，方便比较去重后的 loop / tid 集合。
     template <typename T>
     std::unordered_set<T> toSet(const std::vector<T> &values)
     {
@@ -31,6 +32,7 @@ namespace
 } // namespace
 
 
+// 验证线程数为 0 时，线程池只使用主 loop，并且初始化回调只执行一次。
 TEST(EventLoopThreadPoolTest, ZeroThreadsUsesMainLoopAndRunsInitCallbackOnce)
 {
     EventLoop mainLoop;
@@ -44,6 +46,7 @@ TEST(EventLoopThreadPoolTest, ZeroThreadsUsesMainLoopAndRunsInitCallbackOnce)
     EXPECT_EQ(pool.name(), "single");
 
     pool.setThreadNum(0);
+    // 线程数为 0 时，start() 应该直接把主 loop 交给回调。
     pool.start([&](EventLoop *loop)
                {
                    ++callbackCount;
@@ -67,6 +70,7 @@ TEST(EventLoopThreadPoolTest, ZeroThreadsUsesMainLoopAndRunsInitCallbackOnce)
     EXPECT_EQ(pool.getNextLoop(), &mainLoop);
 }
 
+// 验证启动后会创建指定数量的 worker loop，并在每个 worker 上执行初始化回调。
 TEST(EventLoopThreadPoolTest, StartCreatesRequestedWorkerLoopsAndRunsInitCallbackOnEachWorker)
 {
     EventLoop mainLoop;
@@ -78,6 +82,7 @@ TEST(EventLoopThreadPoolTest, StartCreatesRequestedWorkerLoopsAndRunsInitCallbac
     std::vector<bool> callbackInLoopThread;
 
     pool.setThreadNum(3);
+    // 用 mutex 保护共享 vector，避免多个 worker 同时写入。
     pool.start([&](EventLoop *loop)
                {
                    std::lock_guard<std::mutex> lock(mutex);
@@ -109,6 +114,7 @@ TEST(EventLoopThreadPoolTest, StartCreatesRequestedWorkerLoopsAndRunsInitCallbac
     for (bool inLoopThread : callbackInLoopThread) EXPECT_TRUE(inLoopThread);
 }
 
+// 验证 start() 会等待初始化回调结束，再对调用者返回。
 TEST(EventLoopThreadPoolTest, StartWaitsForInitCallbackToFinishBeforeReturning)
 {
     EventLoop mainLoop;
@@ -122,6 +128,7 @@ TEST(EventLoopThreadPoolTest, StartWaitsForInitCallbackToFinishBeforeReturning)
 
     std::thread releaser([&]()
                          {
+                             // 先确认初始化回调确实进来了，再延迟释放它。
                              ASSERT_EQ(callbackEnteredFuture.wait_for(1s), std::future_status::ready);
                              std::this_thread::sleep_for(80ms);
                              releaseCallback.set_value(); //
@@ -140,6 +147,7 @@ TEST(EventLoopThreadPoolTest, StartWaitsForInitCallbackToFinishBeforeReturning)
     EXPECT_GE(elapsed, 70ms);
 }
 
+// 验证 getNextLoop() 在子 loop 之间按轮询方式分配。
 TEST(EventLoopThreadPoolTest, GetNextLoopUsesRoundRobinAcrossSubLoops)
 {
     EventLoop mainLoop;
@@ -159,6 +167,7 @@ TEST(EventLoopThreadPoolTest, GetNextLoopUsesRoundRobinAcrossSubLoops)
     EXPECT_EQ(pool.getNextLoop(), allLoops[2]);
 }
 
+// 验证提交到各 worker loop 的任务分别在对应 worker 线程上执行。
 TEST(EventLoopThreadPoolTest, QueuedWorkRunsOnEachWorkerLoopThread)
 {
     EventLoop mainLoop;
@@ -184,6 +193,7 @@ TEST(EventLoopThreadPoolTest, QueuedWorkRunsOnEachWorkerLoopThread)
         inLoopFutures.emplace_back(inLoopPromises[i].get_future());
 
         EventLoop *loop = allLoops[i];
+        // 每个 worker loop 都投递一个任务，检查它是否在自己的线程里执行。
         loop->queueInLoop([loop, &tidPromises, &inLoopPromises, i]()
                           {
                               tidPromises[i].set_value(CurrentThread::tid());
@@ -206,6 +216,7 @@ TEST(EventLoopThreadPoolTest, QueuedWorkRunsOnEachWorkerLoopThread)
     EXPECT_EQ(workerTids.size(), allLoops.size());
 }
 
+// 验证 getNextLoop() 选出的 loop 集合与 getAllLoops() 暴露的一致。
 TEST(EventLoopThreadPoolTest, GetNextLoopReturnsSameWorkersExposedByGetAllLoops)
 {
     EventLoop mainLoop;
@@ -223,6 +234,7 @@ TEST(EventLoopThreadPoolTest, GetNextLoopReturnsSameWorkersExposedByGetAllLoops)
     EXPECT_EQ(toSet(selected), toSet(allLoops));
 }
 
+// 验证析构线程池时会等待 worker 上正在运行的回调结束。
 TEST(EventLoopThreadPoolTest, DestructorWaitsForRunningWorkerCallbackToFinish)
 {
     EventLoop mainLoop;
@@ -242,6 +254,7 @@ TEST(EventLoopThreadPoolTest, DestructorWaitsForRunningWorkerCallbackToFinish)
 
     allLoops[0]->queueInLoop([&]()
                              {
+                                 // 让析构卡在一个未结束的 worker 回调里。
                                  callbackStarted.set_value();
                                  allowFinish.wait();
                                  callbackFinished.set_value(); //

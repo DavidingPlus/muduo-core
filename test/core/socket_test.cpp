@@ -18,6 +18,7 @@
 namespace
 {
 
+    // 统一创建测试用 TCP socket，减少样板代码。
     int createTcpSocket()
     {
         const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -25,6 +26,7 @@ namespace
         return fd;
     }
 
+    // 直接向内核读取 socket option，验证 setter 是否真的生效。
     int getSocketOption(int fd, int level, int option)
     {
         int value = -1;
@@ -34,6 +36,7 @@ namespace
         return value;
     }
 
+    // 读取监听 socket 实际绑定到的端口，便于客户端回连。
     uint16_t getBoundPort(int fd)
     {
         sockaddr_in addr{};
@@ -46,6 +49,7 @@ namespace
 } // namespace
 
 
+// 验证 Socket 析构时会关闭它拥有的 fd。
 TEST(SocketTest, DestructorClosesOwnedFileDescriptor)
 {
     const int fd = createTcpSocket();
@@ -61,6 +65,7 @@ TEST(SocketTest, DestructorClosesOwnedFileDescriptor)
     EXPECT_EQ(errno, EBADF);
 }
 
+// 验证各类 socket option setter 真正修改了内核选项。
 TEST(SocketTest, SettersUpdateSocketOptions)
 {
     const int fd = createTcpSocket();
@@ -89,6 +94,7 @@ TEST(SocketTest, SettersUpdateSocketOptions)
     EXPECT_EQ(getSocketOption(fd, SOL_SOCKET, SO_KEEPALIVE), 0);
 }
 
+// 验证 bind/listen/accept 能正确拿到对端地址，并设置非阻塞和 close-on-exec 标志。
 TEST(SocketTest, BindListenAndAcceptPopulatePeerAddressAndFlags)
 {
     const int listenFd = createTcpSocket();
@@ -132,6 +138,7 @@ TEST(SocketTest, BindListenAndAcceptPopulatePeerAddressAndFlags)
     ::close(clientFd);
 }
 
+// 验证 shutdownWrite() 只关闭写半边，客户端随后会读到 EOF。
 TEST(SocketTest, ShutdownWriteHalfClosesConnection)
 {
     const int listenFd = createTcpSocket();

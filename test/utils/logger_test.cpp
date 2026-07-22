@@ -6,15 +6,16 @@
 #include "logger.h"
 
 
+// 这组测试通过重定向 std::cout 来断言 Logger 的最终输出。
 class LoggerTest : public testing::Test
 {
 
 protected:
 
-    // 捕获 std::cout 输出。
+    // 把 std::cout 重定向到字符串流里，方便断言日志内容。
     std::string captureOutput(std::function<void()> func)
     {
-        // 使用 std::cout.rdbuf() 保存原来的 cout buffer。
+        // 先保存原来的 buffer，测试结束后再恢复。
         auto oldBuffer = std::cout.rdbuf();
         // 创建字符串缓冲区。
         std::ostringstream oss;
@@ -32,6 +33,7 @@ protected:
 };
 
 
+// 验证 Logger::instance() 返回的是单例。
 TEST_F(LoggerTest, Singleton)
 {
     Logger &logger1 = Logger::instance();
@@ -41,6 +43,7 @@ TEST_F(LoggerTest, Singleton)
     EXPECT_EQ(&logger1, &logger2);
 }
 
+// 验证默认 INFO 级别日志会带上正确的标签和消息。
 TEST_F(LoggerTest, DefaultLevel)
 {
     Logger::instance().log(LogLevel::INFO, "hello");
@@ -51,6 +54,7 @@ TEST_F(LoggerTest, DefaultLevel)
     EXPECT_NE(output.find("hello"), std::string::npos);
 }
 
+// 验证 INFO 级别的输出格式。
 TEST_F(LoggerTest, InfoLevel)
 {
     Logger::instance().log(LogLevel::INFO, "info message");
@@ -61,6 +65,7 @@ TEST_F(LoggerTest, InfoLevel)
     EXPECT_NE(output.find("info message"), std::string::npos);
 }
 
+// 验证 ERROR 级别的输出格式。
 TEST_F(LoggerTest, ErrorLevel)
 {
     Logger::instance().log(LogLevel::ERROR, "error message");
@@ -71,6 +76,7 @@ TEST_F(LoggerTest, ErrorLevel)
     EXPECT_NE(output.find("error message"), std::string::npos);
 }
 
+// 验证 FATAL 级别的输出格式。
 TEST_F(LoggerTest, FatalLevel)
 {
     Logger::instance().log(LogLevel::FATAL, "fatal message");
@@ -82,6 +88,7 @@ TEST_F(LoggerTest, FatalLevel)
     EXPECT_NE(output.find("fatal message"), std::string::npos);
 }
 
+// 验证 DEBUG 级别的输出格式。
 TEST_F(LoggerTest, DebugLevel)
 {
     Logger::instance().log(LogLevel::DEBUG, "debug message");
@@ -92,6 +99,7 @@ TEST_F(LoggerTest, DebugLevel)
     EXPECT_NE(output.find("debug message"), std::string::npos);
 }
 
+// 验证日志里会打印日期、时间和微秒字段。
 TEST_F(LoggerTest, TimestampFormat)
 {
     Logger::instance().log(LogLevel::INFO, "timestamp test");
@@ -114,6 +122,7 @@ TEST_F(LoggerTest, TimestampFormat)
     EXPECT_NE(output.find("."), std::string::npos);
 }
 
+// 验证空消息也会正常输出等级前缀。
 TEST_F(LoggerTest, EmptyMessage)
 {
     auto output = captureOutput([]()
@@ -122,6 +131,7 @@ TEST_F(LoggerTest, EmptyMessage)
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
 }
 
+// 验证消息里带换行和制表符时也能正常输出。
 TEST_F(LoggerTest, SpecialCharacters)
 {
     std::string msg = "hello\nworld\t123";
@@ -133,6 +143,7 @@ TEST_F(LoggerTest, SpecialCharacters)
     EXPECT_NE(output.find("123"), std::string::npos);
 }
 
+// 验证 LOG_INFO 宏会把参数格式化后输出。
 TEST_F(LoggerTest, LogInfoMacro)
 {
     LOG_INFO("info {}", 123);
@@ -143,6 +154,7 @@ TEST_F(LoggerTest, LogInfoMacro)
     EXPECT_NE(output.find("info 123"), std::string::npos);
 }
 
+// 验证不带可变参数时，LOG_INFO 也能正常展开。
 TEST_F(LoggerTest, LogInfoMacroWithoutVariadicArgs)
 {
     LOG_INFO("plain info message");
@@ -153,6 +165,7 @@ TEST_F(LoggerTest, LogInfoMacroWithoutVariadicArgs)
     EXPECT_NE(output.find("plain info message"), std::string::npos);
 }
 
+// 验证 LOG_INFO 能正确格式化普通指针。
 TEST_F(LoggerTest, LogInfoMacroWithPointer)
 {
     int value = 42;
@@ -167,6 +180,7 @@ TEST_F(LoggerTest, LogInfoMacroWithPointer)
     EXPECT_NE(output.find(expectedPtr), std::string::npos);
 }
 
+// 验证 LOG_INFO 能正确格式化空指针。
 TEST_F(LoggerTest, LogInfoMacroWithNullPointer)
 {
     int *ptr = nullptr;
@@ -181,6 +195,7 @@ TEST_F(LoggerTest, LogInfoMacroWithNullPointer)
     EXPECT_NE(output.find(expectedPtr), std::string::npos);
 }
 
+// 验证 LOG_ERROR 宏的输出内容。
 TEST_F(LoggerTest, LogErrorMacro)
 {
     LOG_ERROR("error {}", 456);
@@ -191,6 +206,7 @@ TEST_F(LoggerTest, LogErrorMacro)
     EXPECT_NE(output.find("error 456"), std::string::npos);
 }
 
+// 验证不带参数时，LOG_ERROR 也能正常输出。
 TEST_F(LoggerTest, LogErrorMacroWithoutVariadicArgs)
 {
     LOG_ERROR("plain error message");
@@ -201,6 +217,7 @@ TEST_F(LoggerTest, LogErrorMacroWithoutVariadicArgs)
     EXPECT_NE(output.find("plain error message"), std::string::npos);
 }
 
+// FATAL 会触发终止流程，所以这里用 DISABLED_ 只验证格式，不在默认跑。
 TEST_F(LoggerTest, DISABLED_LogFatalMacro)
 {
     LOG_FATAL("fatal {}", 789);
@@ -211,6 +228,7 @@ TEST_F(LoggerTest, DISABLED_LogFatalMacro)
     EXPECT_NE(output.find("fatal 789"), std::string::npos);
 }
 
+// 同上，验证无参数 FATAL 宏的格式但默认不执行。
 TEST_F(LoggerTest, DISABLED_LogFatalMacroWithoutVariadicArgs)
 {
     LOG_FATAL("plain fatal message");
@@ -221,6 +239,7 @@ TEST_F(LoggerTest, DISABLED_LogFatalMacroWithoutVariadicArgs)
     EXPECT_NE(output.find("plain fatal message"), std::string::npos);
 }
 
+// 验证 DEBUG 宏在调试构建下会输出，发布构建下会被静默。
 TEST_F(LoggerTest, LogDebugMacro)
 {
     LOG_DEBUG("debug {}", 321);
@@ -235,6 +254,7 @@ TEST_F(LoggerTest, LogDebugMacro)
 #endif
 }
 
+// 验证无参数 DEBUG 宏在不同构建配置下的行为。
 TEST_F(LoggerTest, LogDebugMacroWithoutVariadicArgs)
 {
     LOG_DEBUG("plain debug message");

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 
+// 最基础的冒烟测试，确认测试二进制本身能正常运行。
 TEST(TestRunTests, TestRun)
 {
     SUCCEED();

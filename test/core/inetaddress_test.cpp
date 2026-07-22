@@ -22,6 +22,7 @@ namespace
 } // namespace
 
 
+// 验证默认构造会生成 127.0.0.1:0。
 TEST(InetAddressTest, DefaultConstructorUsesLoopbackAndZeroPort)
 {
     InetAddress address;
@@ -33,6 +34,7 @@ TEST(InetAddressTest, DefaultConstructorUsesLoopbackAndZeroPort)
     EXPECT_EQ(address.toIpPort(), "127.0.0.1:0");
 }
 
+// 验证从 ip + port 构造时，地址字段会被正确保存。
 TEST(InetAddressTest, ConstructorStoresIpAndPort)
 {
     InetAddress address(2007, "192.168.1.10");
@@ -45,6 +47,7 @@ TEST(InetAddressTest, ConstructorStoresIpAndPort)
     EXPECT_EQ(::ntohs(address.getSockAddr()->sin_port), 2007);
 }
 
+// 验证从 sockaddr_in 构造时不会丢失原始地址信息。
 TEST(InetAddressTest, ConstructorFromSockAddrPreservesAddress)
 {
     const sockaddr_in addr = makeSockAddr("10.0.0.5", 65535);
@@ -56,6 +59,7 @@ TEST(InetAddressTest, ConstructorFromSockAddrPreservesAddress)
     EXPECT_EQ(address.toIpPort(), "10.0.0.5:65535");
 }
 
+// 验证 setSockAddr() 会覆盖旧地址并替换成新值。
 TEST(InetAddressTest, SetSockAddrReplacesStoredAddress)
 {
     InetAddress address(80, "8.8.8.8");

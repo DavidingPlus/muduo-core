@@ -15,6 +15,7 @@
 namespace
 {
 
+    // RAII 包装 eventfd，避免 Channel 用例提前返回时泄漏 fd。
     class ScopedFd
     {
 
@@ -35,6 +36,7 @@ namespace
         int m_fd = -1;
     };
 
+    // 生成可用于 epoll 事件测试的 eventfd。
     int createEventFd()
     {
         const int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -45,6 +47,7 @@ namespace
 } // namespace
 
 
+// 验证 enable/disable/remove 这些状态切换会同步反映到 Channel 和 EventLoop 的注册关系。
 TEST(ChannelTest, InterestStateTransitionsTrackLoopRegistration)
 {
     EventLoop loop;
@@ -95,6 +98,7 @@ TEST(ChannelTest, InterestStateTransitionsTrackLoopRegistration)
     EXPECT_FALSE(loop.hasChannel(&channel));
 }
 
+// 验证不同 revents 会触发对应的 read/write/close/error 回调。
 TEST(ChannelTest, HandleEventDispatchesCallbacksByReadyFlags)
 {
     EventLoop loop;
@@ -142,6 +146,7 @@ TEST(ChannelTest, HandleEventDispatchesCallbacksByReadyFlags)
     EXPECT_EQ(closeCount, 1);
 }
 
+// 验证 tie 绑定的 owner 已失效时，事件回调会被抑制。
 TEST(ChannelTest, TieSuppressesCallbacksAfterOwnerExpires)
 {
     EventLoop loop;
@@ -168,6 +173,7 @@ TEST(ChannelTest, TieSuppressesCallbacksAfterOwnerExpires)
     EXPECT_EQ(callbackCount.load(), 0);
 }
 
+// 验证 owner 仍然存活时，tie 不会阻止事件回调执行。
 TEST(ChannelTest, TieKeepsCallbacksActiveWhileOwnerExists)
 {
     EventLoop loop;

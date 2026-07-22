@@ -6,6 +6,7 @@
 #include "timestamp.h"
 
 
+// 验证默认构造得到的时间戳是 0。
 TEST(TimestampTest, DefaultConstructor)
 {
     Timestamp ts;
@@ -14,6 +15,7 @@ TEST(TimestampTest, DefaultConstructor)
     EXPECT_EQ(ts.microSecondsSinceEpoch(), 0);
 }
 
+// 验证 now() 返回的时间接近系统当前时间。
 TEST(TimestampTest, Now)
 {
     Timestamp ts = Timestamp::now();
@@ -25,6 +27,7 @@ TEST(TimestampTest, Now)
     EXPECT_NEAR(ts.microSecondsSinceEpoch(), now, 1000000);
 }
 
+// 验证 toString() 的格式输出，当前只人工打印便于观察。
 TEST(TimestampTest, ToString)
 {
     Timestamp ts(0);
@@ -36,6 +39,7 @@ TEST(TimestampTest, ToString)
     std::cout << ts.toString() << std::endl;
 }
 
+// 验证微秒值会保留在时间戳对象里并出现在字符串中。
 TEST(TimestampTest, MicroSeconds)
 {
     Timestamp ts(123456);
@@ -46,6 +50,7 @@ TEST(TimestampTest, MicroSeconds)
     EXPECT_TRUE(std::string::npos != ts.toString().find(".123456"));
 }
 
+// 验证后一次 now() 的时间戳会大于前一次。
 TEST(TimestampTest, Increasing)
 {
     Timestamp t1 = Timestamp::now();

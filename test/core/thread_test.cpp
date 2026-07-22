@@ -13,6 +13,7 @@
 using namespace std::chrono_literals;
 
 
+// 验证默认构造会生成线程名，并递增已创建线程计数。
 TEST(ThreadTest, ConstructorAssignsDefaultNameAndIncrementsCounter)
 {
     const int before = Thread::numCreated();
@@ -25,6 +26,7 @@ TEST(ThreadTest, ConstructorAssignsDefaultNameAndIncrementsCounter)
     EXPECT_EQ(thread.tid(), 0);
 }
 
+// 验证显式传入的线程名会被保留。
 TEST(ThreadTest, ConstructorPreservesExplicitName)
 {
     Thread thread([]() {}, "worker");
@@ -34,6 +36,7 @@ TEST(ThreadTest, ConstructorPreservesExplicitName)
     EXPECT_EQ(thread.tid(), 0);
 }
 
+// 验证 start() 会启动线程、执行回调，并写回 kernel tid。
 TEST(ThreadTest, StartRunsCallbackAndPublishesKernelTid)
 {
     std::promise<pid_t> promise;
@@ -52,6 +55,7 @@ TEST(ThreadTest, StartRunsCallbackAndPublishesKernelTid)
     thread.join();
 }
 
+// 验证 join() 会等待线程回调执行完毕。
 TEST(ThreadTest, JoinWaitsForCallbackCompletion)
 {
     std::promise<void> started;
@@ -74,6 +78,7 @@ TEST(ThreadTest, JoinWaitsForCallbackCompletion)
     EXPECT_TRUE(finished.load());
 }
 
+// 验证析构时未 join 的线程会被分离，但仍会继续运行结束。
 TEST(ThreadTest, DestructorDetachesRunningThread)
 {
     std::promise<void> started;

@@ -7,6 +7,7 @@
 #include "currentthread.h"
 
 
+// 这个 fixture 专门负责在每个用例前后清空 thread_local 缓存，避免测试互相污染。
 class CurrentThreadTest : public testing::Test
 {
 
@@ -26,6 +27,7 @@ protected:
 };
 
 
+// 验证 tid() 会返回当前线程的 kernel tid，并把结果写进缓存。
 TEST_F(CurrentThreadTest, TidReturnsKernelThreadId)
 {
     const int tid = CurrentThread::tid();
@@ -34,6 +36,7 @@ TEST_F(CurrentThreadTest, TidReturnsKernelThreadId)
     EXPECT_EQ(CurrentThread::t_cachedTid, tid);
 }
 
+// 验证第一次调用 tid() 会自动初始化 thread_local 缓存。
 TEST_F(CurrentThreadTest, TidPopulatesCacheOnFirstCall)
 {
     ASSERT_EQ(CurrentThread::t_cachedTid, 0);
@@ -44,6 +47,7 @@ TEST_F(CurrentThreadTest, TidPopulatesCacheOnFirstCall)
     EXPECT_EQ(CurrentThread::t_cachedTid, first);
 }
 
+// 验证后续调用 tid() 会直接读取缓存，而不是重新取系统 tid。
 TEST_F(CurrentThreadTest, TidReturnsCachedValueOnSubsequentCalls)
 {
     const int first = CurrentThread::tid();
@@ -56,6 +60,7 @@ TEST_F(CurrentThreadTest, TidReturnsCachedValueOnSubsequentCalls)
     EXPECT_EQ(second, 123456);
 }
 
+// 验证 cacheTid() 可以手动把当前线程 tid 写入缓存。
 TEST_F(CurrentThreadTest, CacheTidInitializesCacheExplicitly)
 {
     ASSERT_EQ(CurrentThread::t_cachedTid, 0);
@@ -66,6 +71,7 @@ TEST_F(CurrentThreadTest, CacheTidInitializesCacheExplicitly)
     EXPECT_EQ(CurrentThread::tid(), CurrentThread::t_cachedTid);
 }
 
+// 验证缓存已经有值时，cacheTid() 不会覆盖它。
 TEST_F(CurrentThreadTest, CacheTidDoesNotOverwriteExistingCache)
 {
     CurrentThread::t_cachedTid = 424242;
@@ -75,6 +81,7 @@ TEST_F(CurrentThreadTest, CacheTidDoesNotOverwriteExistingCache)
     EXPECT_EQ(CurrentThread::t_cachedTid, 424242);
 }
 
+// 验证不同线程各自维护独立的 tid 缓存。
 TEST_F(CurrentThreadTest, DifferentThreadsKeepIndependentCaches)
 {
     const int mainTid = CurrentThread::tid();
@@ -83,6 +90,7 @@ TEST_F(CurrentThreadTest, DifferentThreadsKeepIndependentCaches)
     std::promise<std::tuple<int, int, int>> promise;
     auto future = promise.get_future();
 
+    // 子线程先读一次缓存，再连续两次调用 tid()，观察缓存是否稳定。
     std::thread worker([&promise]()
                        {
                            const int initialCache = CurrentThread::t_cachedTid;
