@@ -64,10 +64,6 @@ private:
     using ConnectionMap = std::unordered_map<std::string, TcpConnectionPtr>;
 
 
-    // 用于构造函数中，首先判断传入的 loop 是否有效，无效直接终止程序。
-    static EventLoop *CheckLoopNotNull(EventLoop *loop);
-
-
     // 有一个新用户连接，acceptor 会执行这个回调操作，负责将 mainLoop 接收到的请求连接（acceptChannel 会有读事件发生），通过回调轮询分发给 subLoop 去处理。
     void newConnection(int sockfd, const InetAddress &peerAddr);
 

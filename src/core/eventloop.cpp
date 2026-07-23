@@ -3,25 +3,17 @@
 #include "poller.h"
 #include "channel.h"
 #include "logger.h"
+#include "netutils.h"
 
 #include <cassert>
-
-#include <sys/eventfd.h>
 
 
 // 线程局部变量，一个线程只有一个。防止一个线程创建多个 EventLoop。
 static thread_local EventLoop *t_loopInThisThread = nullptr;
 
 
-int EventLoop::CreateEventfd()
-{
-    int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (evtfd < 0) LOG_FATAL("eventfd error: {}", errno);
-    return evtfd;
-}
-
 EventLoop::EventLoop()
-    : m_poller(Poller::NewDefaultPoller(this)), m_wakeupFd(CreateEventfd()), m_wakeupChannel(new Channel(this, m_wakeupFd))
+    : m_poller(Poller::NewDefaultPoller(this)), m_wakeupFd(NetUtils::CreateEventfd()), m_wakeupChannel(new Channel(this, m_wakeupFd))
 {
     if (t_loopInThisThread)
     {

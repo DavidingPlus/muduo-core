@@ -39,10 +39,6 @@ public:
 
 private:
 
-    // 创建一个非阻塞的 socket。
-    static int CreateSocketNonblocking();
-
-
     // 处理新用户的连接事件。
     void handleRead();
 
