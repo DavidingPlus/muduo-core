@@ -83,8 +83,10 @@ private:
 
     void handleWrite();
 
+    // 处理连接关闭的回调。
     void handleClose();
 
+    // 处理连接运行中发生错误的回调。Channel 在处理通道事件 handleEvent 时，如果发生错误（即不是读取数据，也不是写数据完成）调用。链路：Channel::handleEvent() -> 检测到错误，调用Channel::errorCallback() -> TcpConnection::handleError()。
     void handleError();
 
     void sendInLoop(const void *data, size_t len);

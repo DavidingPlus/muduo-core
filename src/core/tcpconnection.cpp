@@ -59,6 +59,7 @@ void TcpConnection::connectDestroyed()
         // 把 channel 的所有感兴趣的事件从 poller 中删除掉。
         m_channel->disableAll();
 
+        // 执行连接状态变化回调。
         m_connectionCallback(shared_from_this());
     }
 
@@ -97,10 +98,35 @@ void TcpConnection::handleWrite()
 
 void TcpConnection::handleClose()
 {
+    LOG_INFO("TcpConnection::handleClose() fd={} state={}", m_channel->fd(), static_cast<int>(m_state.load()));
+    setState(StateE::kDisconnected);
+    m_channel->disableAll();
+
+    TcpConnectionPtr connPtr(shared_from_this());
+    // 执行连接状态变化回调。
+    m_connectionCallback(connPtr);
+    // 执行关闭连接的回调。
+    // 具体执行的是 TcpServer::removeConnection() 回调（由 TcpServer::newConnection() 创建并初始化），最后会执行到 TcpConnection::connectDestroyed() 回调。会执行一系列删除操作，因此必须放在最后一句。
+    m_closeCallback(connPtr);
 }
 
 void TcpConnection::handleError()
 {
+    int optval;
+    socklen_t optlen = sizeof(optval);
+    int err = 0;
+
+    // 从 socket 获取内核记录的错误状态。getsockopt() 成功时，optval 保存 socket 错误码；失败时，通过 errno 获取系统调用本身的错误。
+    if (0 == ::getsockopt(m_channel->fd(), SOL_SOCKET, SO_ERROR, &optval, &optlen))
+    {
+        err = optval;
+    }
+    else
+    {
+        err = errno;
+    }
+
+    LOG_ERROR("TcpConnection::handleError name:{} - SO_ERROR:{}", m_name, err);
 }
 
 void TcpConnection::sendInLoop(const void *data, size_t len)
