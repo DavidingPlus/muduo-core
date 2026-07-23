@@ -54,6 +54,12 @@ void TcpServer::start()
 
 void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
 {
+    // 在网络编程中，当一个服务器端的 socket 接收到一个新的连接请求时，它会通过 accept() 函数创建一个新的 socket 描述符（sockfd），用于与新连接的客户端进行通信。这个新的 socket 描述符代表了服务器端与客户端的连接通道。在 TcpServer::newConnection() 方法中，sockfd 是这个新建立的连接的 socket 描述符。虽然这个连接已经建立，但是为了进行数据的发送和接收，服务器需要知道这个连接的具体网络地址信息，即这个 socket 绑定的本地服务端 IP 地址和端口号。这些信息对于服务器来说是非常重要的。
+    // 1. 日志记录：记录服务端在当前连接中使用的 ip 和端口号，便于调试和追踪问题。
+    // 2. 支持多网卡环境下的网络服务，服务端可能有多个网卡，绑定了不同的 ip 地址。如果服务端监听的是 0.0.0.0（即监听所有网卡上的地址），那么 accept 返回的 sockfd 实际绑定的本地 IP 和端口可能会因具体的客户端请求而异。使用 getsockname() 可以告诉我们此时建立连接的网卡的服务端的 ip 地址和 port。
+    // 3. 初始化 Tcpconnection 对象。
+    // 4. 防御性编程：确保绑定的 ip 和 port，通过 getsockname 确定没有问题。
+
     // 轮询算法，选择一个 subLoop 来管理 connfd 对应的 channel。
     EventLoop *ioLoop = m_threadPool->getNextLoop();
 
@@ -85,8 +91,14 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
 
 void TcpServer::removeConnection(const TcpConnectionPtr &conn)
 {
+    m_mainLoop->runInLoop(std::bind(&TcpServer::removeConnectionInLoop, this, conn));
 }
 
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
 {
+    // LOG_INFO("TcpServer::removeConnectionInLoop [{}] - connection {}", m_name, conn->name());
+
+    // m_connections.erase(conn->name());
+    // EventLoop *ioLoop = conn->getLoop();
+    // ioLoop->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
 }
