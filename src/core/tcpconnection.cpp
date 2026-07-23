@@ -94,7 +94,7 @@ void TcpConnection::connectDestroyed()
 void TcpConnection::handleRead(Timestamp receiveTime)
 {
     int savedErrno = 0;
-    ssize_t n = m_inputBuffer.readFd(m_channel->fd(), &savedErrno);
+    ssize_t n = m_inputBuffer.readFd(m_channel->fd(), savedErrno);
     // 有数据到达。
     if (n > 0)
     {

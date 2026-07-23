@@ -44,7 +44,7 @@ void Buffer::append(const char *data, size_t len)
     m_writerIndex += len;
 }
 
-ssize_t Buffer::readFd(int fd, int *saveErrno)
+ssize_t Buffer::readFd(int fd, int &saveErrno)
 {
     // 从 socket 读取数据到 Buffer，如果 Buffer 放不下，就先放到栈上的临时缓冲区，再追加到 Buffer。
     // 注意：这里无法使用正常的扩容语义，因为我们并不知道 TCP 流过来的数据有多大，因此使用栈上的临时缓冲区，仅用于接收 Buffer 剩余空间放不下的数据。
@@ -79,7 +79,7 @@ ssize_t Buffer::readFd(int fd, int *saveErrno)
 
     if (n < 0)
     {
-        *saveErrno = errno;
+        saveErrno = errno;
     }
     // Buffer 的可写缓冲区已经够存储读出来的数据了。
     else if (n <= writable)
@@ -98,10 +98,10 @@ ssize_t Buffer::readFd(int fd, int *saveErrno)
     return n;
 }
 
-ssize_t Buffer::writeFd(int fd, int *saveErrno)
+ssize_t Buffer::writeFd(int fd, int &saveErrno)
 {
     ssize_t n = ::write(fd, peek(), readableBytes());
-    if (n < 0) *saveErrno = errno;
+    if (n < 0) saveErrno = errno;
     return n;
 }
 

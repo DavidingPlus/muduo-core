@@ -155,7 +155,7 @@ TEST(BufferTest, ReadFdAppendsWhenWritableSpaceIsEnough)
     ASSERT_EQ(::write(pipe.writeEnd(), payload.data(), payload.size()), static_cast<ssize_t>(payload.size()));
 
     int savedErrno = 0;
-    const ssize_t n = buffer.readFd(pipe.readEnd(), &savedErrno);
+    const ssize_t n = buffer.readFd(pipe.readEnd(), savedErrno);
 
     ASSERT_EQ(n, static_cast<ssize_t>(payload.size()));
     EXPECT_EQ(savedErrno, 0);
@@ -173,7 +173,7 @@ TEST(BufferTest, ReadFdUsesExtraBufferWhenPayloadExceedsWritableSpace)
     ASSERT_EQ(::write(pipe.writeEnd(), payload.data(), payload.size()), static_cast<ssize_t>(payload.size()));
 
     int savedErrno = 0;
-    const ssize_t n = buffer.readFd(pipe.readEnd(), &savedErrno);
+    const ssize_t n = buffer.readFd(pipe.readEnd(), savedErrno);
 
     ASSERT_EQ(n, static_cast<ssize_t>(payload.size()));
     EXPECT_EQ(savedErrno, 0);
@@ -187,7 +187,7 @@ TEST(BufferTest, ReadFdStoresErrnoOnFailure)
     Buffer buffer;
     int savedErrno = 0;
 
-    EXPECT_EQ(buffer.readFd(-1, &savedErrno), -1);
+    EXPECT_EQ(buffer.readFd(-1, savedErrno), -1);
     EXPECT_EQ(savedErrno, EBADF);
 }
 
@@ -201,7 +201,7 @@ TEST(BufferTest, WriteFdWritesReadableBytesWithoutConsumingThem)
     buffer.append(payload.data(), payload.size());
 
     int savedErrno = 0;
-    const ssize_t n = buffer.writeFd(pipe.writeEnd(), &savedErrno);
+    const ssize_t n = buffer.writeFd(pipe.writeEnd(), savedErrno);
 
     ASSERT_EQ(n, static_cast<ssize_t>(payload.size()));
     EXPECT_EQ(savedErrno, 0);
@@ -221,6 +221,6 @@ TEST(BufferTest, WriteFdStoresErrnoOnFailure)
     buffer.append(payload.data(), payload.size());
 
     int savedErrno = 0;
-    EXPECT_EQ(buffer.writeFd(-1, &savedErrno), -1);
+    EXPECT_EQ(buffer.writeFd(-1, savedErrno), -1);
     EXPECT_EQ(savedErrno, EBADF);
 }
