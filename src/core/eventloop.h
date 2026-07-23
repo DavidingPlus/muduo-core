@@ -40,6 +40,8 @@ public:
 
     Timestamp pollReturnTime() const { return m_pollReturnTime; }
 
+    // 注意 loop() 和 runInLoop(cb)/queueInLoop(cb) 语义的区别。一个例子是 TcpServer::start()。
+
     // 在当前 EventLoop 所属线程执行 cb。若调用线程就是该 EventLoop 线程，直接执行；否则调用 queueInLoop() 将 cb 投递到该 EventLoop 的任务队列，由其线程执行。
     // 例如：线程 A/B 调用 B->runInLoop(cb) 请求线程 B 执行 cb。如果调用者线程（A/B）就是该 EventLoop 所属线程（线程 B），则直接执行 cb，避免不必要的线程切换。如果调用者线程不是该 EventLoop 所属线程（线程 A），则通过 queueInLoop() 将 cb 投递给 EventLoop B，最终由线程 B 执行 cb。
     void runInLoop(Functor cb);

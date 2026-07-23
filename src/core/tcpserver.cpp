@@ -1,6 +1,7 @@
 #include "tcpserver.h"
 
 #include "logger.h"
+#include "eventloop.h"
 #include "eventloopthread.h"
 #include "eventloopthreadpool.h"
 
@@ -31,12 +32,18 @@ TcpServer::~TcpServer()
     // }
 }
 
-void TcpServer::setThreadNum(int numThreads)
-{
-}
-
 void TcpServer::start()
 {
+    // 防止一个 TcpServer 对象被 start 多次。所以多次调用没有副作用，线程安全。
+    // 原子变量进行 fetch_xxx 运算操作，修改自身，但返回旧值。因此这里可以用来判断多次调用。
+    if (0 == m_started.fetch_add(1))
+    {
+        // 先启动 subLoop 线程池，创建并初始化 IO 工作线程。后续接收到的新连接会被分配给这些 subLoop 处理。
+        m_threadPool->start(m_threadInitCallback);
+        // subLoop 准备完成后，再让 mainLoop 开始监听 accept socket。这样可以保证新连接到来时，已经存在可用的 IO 工作线程处理连接。
+        // 注意：m_mainLoop 作为 TcpServer 的主控制 EventLoop，不参与实际的 IO 事件调度。与 subLoop 不同，mainLoop 不调用 loop() 进入 Reactor 循环，因为 loop() 会驱动 Poller 监听文件描述符并分发 Channel 事件，这属于 IO 工作线程的职责。mainLoop 主要用于跨线程提交任务，例如通过 runInLoop() 将 Acceptor::listen() 投递到 mainLoop 所在线程执行，保证监听 socket 的初始化操作在线程安全的上下文中完成。subLoop 线程池中的 EventLoop 才负责真正运行事件循环，处理连接建立后的读写事件。这也是为什么 EventLoop 提供了 loop() 和 runInLoop()/queueInLoop() 两类函数，对应了 EventLoop 处理的两类回调操作。
+        m_mainLoop->runInLoop(std::bind(&Acceptor::listen, m_acceptor.get()));
+    }
 }
 
 void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
