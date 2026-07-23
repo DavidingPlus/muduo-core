@@ -78,6 +78,7 @@ private:
 
     void setState(StateE state) { m_state = state; }
 
+    // 读是对服务器而言的，当对端客户端有数据到达，服务器端检测到 EPOLLIN，就会触发该 fd 上的回调，handleRead() 取读走对端发来的数据。
     void handleRead(Timestamp receiveTime);
 
     void handleWrite();
@@ -115,10 +116,12 @@ private:
 
     // 这些回调 TcpServer 也有，用户通过写入 TcpServer 注册，TcpServer 再将注册的回调传递给 TcpConnection，TcpConnection 再将回调注册到 Channel 中。
 
-    // 有新连接时的回调。
+    // 连接状态变化回调。当 TcpConnection 的生命周期状态发生变化时调用，用于通知上层业务。它不是“新连接到来”的回调，而是整个连接状态机变化的通知。典型触发场景：
+    // 1. connectEstablished()：kConnecting -> kConnected。表示连接建立完成，通知业务初始化会话资源。
+    // 2. connectDestroyed()：kConnected -> kDisconnected。表示连接已经关闭，通知业务释放会话资源。
     ConnectionCallback m_connectionCallback;
 
-    // 有读写消息时的回调。
+    // TCP 连接收到数据后调用的消息回调。TcpConnection 负责从 socket 读取数据并存入 m_inputBuffer，然后通过该回调将收到的数据交给上层业务处理。
     MessageCallback m_messageCallback;
 
     // 消息发送完成以后的回调。

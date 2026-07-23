@@ -56,7 +56,7 @@ public:
 
     void setErrorCallback(EventCallback cb) { m_errorCallback = std::move(cb); }
 
-    // Channel 的 tie() 方法什么时候调用过？TcpConnection -> channel。Channel 作为 TcpConnection 的成员，总是随 TcpConnection 的销毁而销毁。因此，Channel 不会在 TcpConnection 之后存在，即 Channel 与 TcpConnection 存在生命周期依赖关系。Channel 保存 TcpConnection 的回调函数，如果 TcpConnection 已经销毁，但 epoll 仍然返回该 Channel 的事件，则执行回调会访问悬空对象。我们需要保证 Channel 执行事件回调期间，TcpConnection 生命周期不会结束。
+    // Channel 的 tie() 方法什么时候调用过？TcpConnection -> channel。Channel 作为 TcpConnection 的成员，总是随 TcpConnection 的销毁而销毁。因此，Channel 不会在 TcpConnection 之后存在，即 Channel 与 TcpConnection 存在生命周期依赖关系。Channel 保存 TcpConnection 的回调函数，如果 TcpConnection 已经销毁，但 epoll 仍然返回该 Channel 的事件，则执行回调会访问悬空对象。我们需要保证 Channel 执行事件回调期间，TcpConnection 生命周期不会结束，或者说如果 TcpConnection 生命周期已经结束，Channel 能够识别并不会执行对应回调。
     // tie() 提供线程安全保护，防止 EventLoop 在 TcpConnection 已销毁后调用 Channel 的回调函数。具体而言，使用 weak_ptr 关联 TcpConnection，只观察 TcpConnection 是否还存在，在事件处理前通过 lock() 临时提升为 shared_ptr，保证执行回调期间 TcpConnection 对象一定存在。使用 weak_ptr 而不是 shared_ptr，是为了避免 Channel 和 TcpConnection 之间形成循环引用。
     void tie(const std::shared_ptr<void> &obj);
 
@@ -92,11 +92,13 @@ public:
     // 一个线程一个事件循环。
     EventLoop *ownerLoop() { return m_loop; }
 
+    // 在 channel 所属的 EventLoop 中把当前的 channel 删除掉。
     void remove();
 
 
 private:
 
+    // 通过 channel 所属的 eventloop，调用 poller 的相应方法，注册 fd 的 events 事件。
     void update();
 
     void handleEventWithGuard(const Timestamp &receiveTime);
@@ -132,6 +134,7 @@ private:
     int m_index = kNew;
 
     // tie 机制的解释见上面的 tie() 函数。
+    // 为什么是 void 类型？虽然类型是 void，但并不表示它指向一个 void 对象。weak_ptr<void> 本质上保存 shared_ptr 控制块的弱引用，只用于判断绑定对象是否仍然存活，并不需要访问对象内容。TcpConnection 调用 tie() 时，传入的 shared_ptr<TcpConnection> 会隐式转换为 shared_ptr<void>，这样就能用 m_tie 监视 TcpConnection 是否还存在。handleEvent() 时通过 lock() 临时提升为 shared_ptr<void>。lock 成功，对象仍然存活，可以安全处理事件。lock 失败，对象已经析构，丢弃当前事件，避免访问悬空对象。使用 void 是为了实现类型擦除，使 Channel 不依赖具体业务对象类型。除 TcpConnection 外，其他需要绑定生命周期的对象也可复用该机制。
     std::weak_ptr<void> m_tie;
 
     bool m_tied = false;
