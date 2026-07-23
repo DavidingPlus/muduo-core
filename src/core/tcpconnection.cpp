@@ -9,7 +9,7 @@
 TcpConnection::TcpConnection(EventLoop *loop, const std::string &name, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
     : m_loop(NetUtils::CheckLoopNotNull(loop)), m_name(name), m_socket(new Socket(sockfd)), m_channel(new Channel(m_loop, sockfd)), m_localAddr(localAddr), m_peerAddr(peerAddr)
 {
-    // 下面给 channel 设置相应的回调函数，poller 给 channel 通知感兴趣的事件发生了 channel 会回调相应的回调函数。
+    // 不能在构造函数中用 shared_from_this()，因为对象还在构造中，shared_ptr 的控制块通常还没建立好。同时这里直接绑定 this 是安全的，等后面 connectEstablished() 里再通过 tie(shared_from_this()) 保护生命周期。只有 TcpConnection 还活着时，Channel 才会真正分发事件回调。
     m_channel->setReadCallback(std::bind(&TcpConnection::handleRead, this, std::placeholders::_1));
     m_channel->setWriteCallback(std::bind(&TcpConnection::handleWrite, this));
     m_channel->setCloseCallback(std::bind(&TcpConnection::handleClose, this));
@@ -27,8 +27,7 @@ TcpConnection::~TcpConnection()
 
 void TcpConnection::send(const std::string &buf)
 {
-    // 只有连接状态才能 send。
-    // TcpConnection 属于某一个 EventLoop，其内部状态（例如 outputBuffer、Channel 事件状态等）只能在所属 IO 线程中修改。runInLoop() 会根据当前调用线程决定执行方式。如果当前线程就是 m_loop 所属线程，则直接执行 sendInLoop()，避免一次任务投递，降低延迟。如果当前线程不是 m_loop 所属线程，例如线程 A 调用 loopB->queueInLoop(cb)，希望线程 B 执行 cb，则将任务加入 EventLoop 的 pending functor 队列，由 IO 线程异步执行。用户无需关心当前是否跨线程调用 send()。
+    // 和构造函数中不同，这里应该用 shared_from_this()。因为发送逻辑可能被投递到别的线程执行，所以这里要先用 shared_from_this() 把对象“保活”。否则如果回调稍后才执行，而 TcpConnection 已经被释放，就会访问悬空对象。
     if (connected())
     {
         m_loop->runInLoop(std::bind(&TcpConnection::sendInLoop, shared_from_this(), buf.c_str(), buf.size()));
@@ -57,7 +56,7 @@ void TcpConnection::shutdown()
     {
         // shutdown() 不会立即销毁 TcpConnection，而是发起 TCP 半关闭流程。TCP 连接的读写方向是独立的，关闭写端后仍然可以继续读取对端数据。因此需要先进入 kDisconnecting 状态，表示：本端已经请求关闭发送方向；但连接仍然有效，可能还有数据需要接收；等待剩余数据发送完成以及对端关闭后，最终进入 kDisconnected。
         setState(StateE::kDisconnecting);
-        m_loop->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
+        m_loop->runInLoop(std::bind(&TcpConnection::shutdownInLoop, shared_from_this()));
     }
 }
 
@@ -65,7 +64,7 @@ void TcpConnection::connectEstablished()
 {
     setState(StateE::kConnected);
 
-    // 设置 m_channel 的 tie 机制保证 Channel 和 TcpConnection 的生命周期语义。
+    // 这是第一次安全使用 shared_from_this() 的地方：TcpConnection 已经被 shared_ptr 接管。tie 只做“临时保活”，防止事件分发时对象先析构。
     m_channel->tie(shared_from_this());
     // 向 poller 注册 channel 的 EPOLLIN 读事件。
     m_channel->enableReading();
