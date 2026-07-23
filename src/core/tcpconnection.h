@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <atomic>
 
 class EventLoop;
 
@@ -24,17 +25,41 @@ public:
 
     ~TcpConnection();
 
+    EventLoop *getLoop() const { return m_loop; }
+
+    const std::string &name() const { return m_name; }
+
+    const InetAddress &localAddress() const { return m_localAddr; }
+
+    const InetAddress &peerAddress() const { return m_peerAddr; }
+
+    bool connected() const { return StateE::kConnected == m_state; }
+
 
 private:
 
+    enum class StateE
+    {
+        kDisconnected, // 已经断开连接。
+        kConnecting,   // 正在连接。
+        kConnected,    // 已连接。
+        kDisconnecting // 正在断开连接。
+    };
+
+
+    void setState(StateE state) { m_state = state; }
+
+
     // 这里是 mainLoop 还是 subLoop 由 TcpServer 中创建的线程数决定。若为多 Reactor，该 loop 指向 subLoop，若为单 Reactor，该 loop 指向 mainLoop。
-    EventLoop *m_loop;
+    EventLoop *m_loop = nullptr;
 
     const std::string m_name;
 
     const InetAddress m_localAddr;
 
     const InetAddress m_peerAddr;
+
+    std::atomic<StateE> m_state;
 };
 
 
