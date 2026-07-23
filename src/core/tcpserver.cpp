@@ -5,6 +5,7 @@
 #include "eventloopthread.h"
 #include "eventloopthreadpool.h"
 #include "netutils.h"
+#include "tcpconnection.h"
 
 
 TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &name, Option option)
@@ -17,14 +18,16 @@ TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr, const std::
 
 TcpServer::~TcpServer()
 {
-    // for (auto &item : m_connections)
-    // {
-    //     TcpConnectionPtr conn(item.second);
-    //     // 把原始的智能指针复位，让栈空间的 TcpConnectionPtr conn 指向该对象，当 conn 出了其作用域，即可释放智能指针指向的对象。
-    //     item.second.reset();
-    //     // 销毁连接
-    //     conn->getLoop()->runInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
-    // }
+    // TcpServer 销毁时，需要关闭并销毁所有已经建立的 TcpConnection。TcpConnection 不是由 TcpServer 所在线程直接销毁，而是需要回到 TcpConnection 所属的 EventLoop(IO 线程) 中执行 connectDestroyed()。
+    for (auto &item : m_connections)
+    {
+        // 复制一份 shared_ptr，延长 TcpConnection 生命周期。后续会 reset() m_connections 中保存的 shared_ptr，但是 runInLoop() 中的 bind 对象仍然持有一份 shared_ptr，保证在 IO 线程执行 connectDestroyed() 前 TcpConnection 不会析构。
+        TcpConnectionPtr conn(item.second);
+        // 把原始的 shared_ptr 对象复位，移除 TcpServer 对该连接的所有权，现在我们刚创建的栈空间的 TcpConnectionPtr conn 指向该对象，当 conn 出了其作用域，即可释放智能指针指向的对象。
+        item.second.reset();
+        // 将 TcpConnection 的销毁操作转移到其所属 EventLoop 线程执行。注意：bind 会复制 conn(shared_ptr)，因此即使当前析构函数结束，TcpConnection 对象仍然存活，直到目标 IO 线程执行完 connectDestroyed() 后引用计数归零，最终释放对象。
+        conn->getLoop()->runInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
+    }
 }
 
 void TcpServer::setThreadNum(int numThreads)
@@ -71,17 +74,17 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
 
     InetAddress localAddr(local);
 
-    // TcpConnectionPtr conn(new TcpConnection(ioLoop, connName, sockfd, localAddr, peerAddr));
-    // m_connections[connName] = conn;
-    // // 下面的回调都是用户设置给 TcpServer -> TcpConnection 的，至于 Channel 绑定的则是 TcpConnection 设置的四个，handleRead，handleWrite...。这下面的回调用于 handlexxx 函数中。
-    // conn->setConnectionCallback(m_connectionCallback);
-    // conn->setMessageCallback(m_messageCallback);
-    // conn->setWriteCompleteCallback(m_writeCompleteCallback);
-    // // 设置了如何关闭连接的回调。
-    // conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, std::placeholders::_1));
+    TcpConnectionPtr conn(new TcpConnection(ioLoop, connName, sockfd, localAddr, peerAddr));
+    m_connections[connName] = conn;
+    // 下面的回调都是用户设置给 TcpServer -> TcpConnection 的，被保存在 TcpConnection 的成员变量中。Channel 绑定的则是 TcpConnection 自己设置的四个，handleRead，handleWrite，handleClose，handleError 回调，这四个回调会调用 TcpServer 设置的函数，并做一些其他处理。
+    conn->setConnectionCallback(m_connectionCallback);
+    conn->setMessageCallback(m_messageCallback);
+    conn->setWriteCompleteCallback(m_writeCompleteCallback);
+    // 设置了如何关闭连接的回调。
+    conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, std::placeholders::_1));
 
-    // // 向 ioLoop 投递 TcpConnection::connectEstablished() 回调函数。
-    // ioLoop->runInLoop(std::bind(&TcpConnection::connectEstablished, conn));
+    // 向 ioLoop 投递建立好连接的 TcpConnection::connectEstablished() 回调函数。
+    ioLoop->runInLoop(std::bind(&TcpConnection::connectEstablished, conn));
 }
 
 void TcpServer::removeConnection(const TcpConnectionPtr &conn)
@@ -91,9 +94,11 @@ void TcpServer::removeConnection(const TcpConnectionPtr &conn)
 
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr &conn)
 {
-    // LOG_INFO("TcpServer::removeConnectionInLoop [{}] - connection {}", m_name, conn->name());
+    LOG_INFO("TcpServer::removeConnectionInLoop [{}] - connection {}", m_name, conn->name());
 
-    // m_connections.erase(conn->name());
-    // EventLoop *ioLoop = conn->getLoop();
-    // ioLoop->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
+    m_connections.erase(conn->name());
+
+    EventLoop *ioLoop = conn->getLoop();
+    // 这里选择使用 queueInLoop() 延迟执行 TcpConnection::connectDestroyed()，是为了让当前事件循环中正在处理的关闭事件流程先完整结束，再在下一轮 EventLoop 中安全地清理 TcpConnection 相关资源。
+    ioLoop->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
 }

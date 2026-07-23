@@ -1,5 +1,5 @@
-#ifndef _MUDUO_CORE_TCPSERVER_H_
-#define _MUDUO_CORE_TCPSERVER_H_
+#ifndef _MUDUO_CORE_TCPCONNECTION_H_
+#define _MUDUO_CORE_TCPCONNECTION_H_
 
 #include "globalmacros.h"
 
