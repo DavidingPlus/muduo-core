@@ -38,9 +38,10 @@ void TcpServer::setThreadNum(int numThreads)
 
 void TcpServer::start()
 {
-    // 防止一个 TcpServer 对象被 start 多次。所以多次调用没有副作用，线程安全。
-    // 原子变量进行 fetch_xxx 运算操作，修改自身，但返回旧值。因此这里可以用来判断多次调用。
-    if (0 == m_started.fetch_add(1))
+    // 防止一个 TcpServer 对象被 start 多次。所以多次调用没有副作用，线程安全。用原子标志保证只启动一次。
+    // 可以对原子变量进行 fetch_xxx 运算操作，原子修改自身，但返回旧值。因此这里可以用来判断多次调用，例如：if (0 == m_started.fetch_add(1))
+    // 同理，exchange() 的作用是原子地交换值，并返回旧值的函数，用在这里刚合适。第一次调用时：old == false，设置为 true，返回 false，进入启动流程。后续调用时：old == true，仍保持 true，返回 true，不再重复启动。
+    if (!m_started.exchange(true))
     {
         // 先启动 subLoop 线程池，创建并初始化 IO 工作线程。后续接收到的新连接会被分配给这些 subLoop 处理。
         m_threadPool->start(m_threadInitCallback);

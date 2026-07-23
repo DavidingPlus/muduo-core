@@ -102,7 +102,7 @@ private:
     // 线程池中线程的数量。
     int m_numThreads = 0;
 
-    std::atomic_int m_started = 0;
+    std::atomic_bool m_started = false;
 
     int m_nextConnId = 1;
 
