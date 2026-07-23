@@ -78,7 +78,7 @@ public:
     // fd -> Buffer，把新数据写入 writable 区域，然后让它加入 readable 区域。
     ssize_t readFd(int fd, int *saveErrno);
 
-    // Buffer -> fd，把 readable 区域的数据发送出去
+    // Buffer -> fd，把 readable 区域的数据发送出去。
     ssize_t writeFd(int fd, int *saveErrno);
 
 

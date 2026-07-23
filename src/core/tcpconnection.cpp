@@ -20,3 +20,11 @@ void TcpConnection::sendFile(int fileDescriptor, off_t offset, size_t count)
 void TcpConnection::shutdown()
 {
 }
+
+void TcpConnection::connectEstablished()
+{
+}
+
+void TcpConnection::connectDestroyed()
+{
+}

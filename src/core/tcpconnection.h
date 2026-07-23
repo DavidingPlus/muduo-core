@@ -5,6 +5,9 @@
 
 #include "inetaddress.h"
 #include "callbacks.h"
+#include "acceptor.h"
+#include "socket.h"
+#include "buffer.h"
 
 #include <memory>
 #include <string>
@@ -54,6 +57,12 @@ public:
 
     void setHighWaterMarkCallback(const HighWaterMarkCallback &cb, size_t highWaterMark) { m_highWaterMarkCallback = cb, m_highWaterMark = highWaterMark; }
 
+    // 连接建立。
+    void connectEstablished();
+
+    // 连接销毁。
+    void connectDestroyed();
+
 
 private:
 
@@ -80,6 +89,14 @@ private:
 
     std::atomic<StateE> m_state;
 
+    // 连接是否在监听读事件。
+    bool m_reading;
+
+    // 这里和 Acceptor 类似。区别是 Acceptor 对应 mainloop，TcpConnection -> subloop，二者的定位和分工不同。
+    std::unique_ptr<Socket> m_socket;
+
+    std::unique_ptr<Channel> m_channel;
+
     // 这些回调 TcpServer 也有，用户通过写入 TcpServer 注册，TcpServer 再将注册的回调传递给 TcpConnection，TcpConnection 再将回调注册到 Channel 中。
 
     // 有新连接时的回调。
@@ -99,6 +116,12 @@ private:
 
     // 高水位阈值。
     size_t m_highWaterMark;
+
+    // 接收数据的缓冲区。
+    Buffer m_inputBuffer;
+
+    // 发送数据的缓冲区。用户 send 向 m_outputBuffer 发。
+    Buffer m_outputBuffer;
 };
 
 
