@@ -8,3 +8,15 @@ TcpConnection::TcpConnection(EventLoop *loop, const std::string &name, int sockf
 TcpConnection::~TcpConnection()
 {
 }
+
+void TcpConnection::send(const std::string &buf)
+{
+}
+
+void TcpConnection::sendFile(int fileDescriptor, off_t offset, size_t count)
+{
+}
+
+void TcpConnection::shutdown()
+{
+}

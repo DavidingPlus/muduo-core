@@ -4,6 +4,7 @@
 #include "globalmacros.h"
 
 #include "inetaddress.h"
+#include "callbacks.h"
 
 #include <memory>
 #include <string>
@@ -35,6 +36,24 @@ public:
 
     bool connected() const { return StateE::kConnected == m_state; }
 
+    // 发送数据。
+    void send(const std::string &buf);
+
+    void sendFile(int fileDescriptor, off_t offset, size_t count);
+
+    // 关闭半连接。
+    void shutdown();
+
+    void setConnectionCallback(const ConnectionCallback &cb) { m_connectionCallback = cb; }
+
+    void setMessageCallback(const MessageCallback &cb) { m_messageCallback = cb; }
+
+    void setWriteCompleteCallback(const WriteCompleteCallback &cb) { m_writeCompleteCallback = cb; }
+
+    void setCloseCallback(const CloseCallback &cb) { m_closeCallback = cb; }
+
+    void setHighWaterMarkCallback(const HighWaterMarkCallback &cb, size_t highWaterMark) { m_highWaterMarkCallback = cb, m_highWaterMark = highWaterMark; }
+
 
 private:
 
@@ -60,6 +79,26 @@ private:
     const InetAddress m_peerAddr;
 
     std::atomic<StateE> m_state;
+
+    // 这些回调 TcpServer 也有，用户通过写入 TcpServer 注册，TcpServer 再将注册的回调传递给 TcpConnection，TcpConnection 再将回调注册到 Channel 中。
+
+    // 有新连接时的回调。
+    ConnectionCallback m_connectionCallback;
+
+    // 有读写消息时的回调。
+    MessageCallback m_messageCallback;
+
+    // 消息发送完成以后的回调。
+    WriteCompleteCallback m_writeCompleteCallback;
+
+    // 关闭连接的回调。
+    CloseCallback m_closeCallback;
+
+    // 高水位回调。
+    HighWaterMarkCallback m_highWaterMarkCallback;
+
+    // 高水位阈值。
+    size_t m_highWaterMark;
 };
 
 
