@@ -40,6 +40,8 @@ public:
 
     bool connected() const { return StateE::kConnected == m_state; }
 
+    // send()、sendFile() 和 shutdown() 内部都会调用和事件循环相关的 xxxInLoop() 的私有函数。
+
     // 发送数据。
     void send(const std::string &buf);
 
@@ -91,9 +93,9 @@ private:
 
     void sendInLoop(const void *data, size_t len);
 
-    void shutdownInLoop();
-
     void sendFileInLoop(int fileDescriptor, off_t offset, size_t count);
+
+    void shutdownInLoop();
 
 
     // 这里是 mainLoop 还是 subLoop 由 TcpServer 中创建的线程数决定。若为多 Reactor，该 loop 指向 subLoop，若为单 Reactor，该 loop 指向 mainLoop。

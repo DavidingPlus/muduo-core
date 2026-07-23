@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "netutils.h"
 #include "timestamp.h"
+#include "eventloop.h"
 
 
 TcpConnection::TcpConnection(EventLoop *loop, const std::string &name, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
@@ -26,14 +27,38 @@ TcpConnection::~TcpConnection()
 
 void TcpConnection::send(const std::string &buf)
 {
+    // 只有连接状态才能 send。
+    // TcpConnection 属于某一个 EventLoop，其内部状态（例如 outputBuffer、Channel 事件状态等）只能在所属 IO 线程中修改。runInLoop() 会根据当前调用线程决定执行方式。如果当前线程就是 m_loop 所属线程，则直接执行 sendInLoop()，避免一次任务投递，降低延迟。如果当前线程不是 m_loop 所属线程，例如线程 A 调用 loopB->queueInLoop(cb)，希望线程 B 执行 cb，则将任务加入 EventLoop 的 pending functor 队列，由 IO 线程异步执行。用户无需关心当前是否跨线程调用 send()。
+    if (connected())
+    {
+        m_loop->runInLoop(std::bind(&TcpConnection::sendInLoop, shared_from_this(), buf.c_str(), buf.size()));
+    }
+    else
+    {
+        LOG_ERROR("TcpConnection::send() - not connected");
+    }
 }
 
 void TcpConnection::sendFile(int fileDescriptor, off_t offset, size_t count)
 {
+    if (connected())
+    {
+        m_loop->runInLoop(std::bind(&TcpConnection::sendFileInLoop, shared_from_this(), fileDescriptor, offset, count));
+    }
+    else
+    {
+        LOG_ERROR("TcpConnection::sendFile() - not connected");
+    }
 }
 
 void TcpConnection::shutdown()
 {
+    if (connected())
+    {
+        // shutdown() 不会立即销毁 TcpConnection，而是发起 TCP 半关闭流程。TCP 连接的读写方向是独立的，关闭写端后仍然可以继续读取对端数据。因此需要先进入 kDisconnecting 状态，表示：本端已经请求关闭发送方向；但连接仍然有效，可能还有数据需要接收；等待剩余数据发送完成以及对端关闭后，最终进入 kDisconnected。
+        setState(StateE::kDisconnecting);
+        m_loop->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
+    }
 }
 
 void TcpConnection::connectEstablished()
@@ -52,7 +77,7 @@ void TcpConnection::connectEstablished()
 void TcpConnection::connectDestroyed()
 {
     // TODO 这个条件判断是啥意思？
-    if (StateE::kConnected == m_state)
+    if (connected())
     {
         setState(StateE::kDisconnected);
 
