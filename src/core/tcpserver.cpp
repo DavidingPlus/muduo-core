@@ -32,6 +32,12 @@ TcpServer::~TcpServer()
     // }
 }
 
+void TcpServer::setThreadNum(int numThreads)
+{
+    m_numThreads = numThreads;
+    m_threadPool->setThreadNum(m_numThreads);
+}
+
 void TcpServer::start()
 {
     // 防止一个 TcpServer 对象被 start 多次。所以多次调用没有副作用，线程安全。
@@ -48,6 +54,33 @@ void TcpServer::start()
 
 void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
 {
+    // 轮询算法，选择一个 subLoop 来管理 connfd 对应的 channel。
+    EventLoop *ioLoop = m_threadPool->getNextLoop();
+
+    // m_nextConnId 没有设置为原子类是因为 TcpServer::newConnection() 只在 mainloop 中执行，不涉及线程安全问题。
+    std::string connName = fmt::format("{}-{}#{}", m_name, m_ipPort, m_nextConnId++); // MyServer-127.0.0.1:8888#1
+
+    LOG_INFO("TcpServer::newConnection [{}] - new connection [{}] from {}", m_name, connName, peerAddr.toIpPort());
+
+    // 监听到 listen 读事件以后，Acceptor::handleRead() 会调用 accept()，并且将本机连接通信用的 sockfd 和连接方的 peerAddr 传递进来。
+    // 通过 sockfd 获取绑定的本机的 ip 地址和端口信息。
+    sockaddr_in local{};
+    socklen_t addrlen = sizeof(local);
+    if (::getsockname(sockfd, reinterpret_cast<sockaddr *>(&local), &addrlen) < 0) LOG_ERROR("TcpServer::newConnection() getsockname failed");
+
+    InetAddress localAddr(local);
+
+    // TcpConnectionPtr conn(new TcpConnection(ioLoop, connName, sockfd, localAddr, peerAddr));
+    // m_connections[connName] = conn;
+    // // 下面的回调都是用户设置给 TcpServer -> TcpConnection 的，至于 Channel 绑定的则是 TcpConnection 设置的四个，handleRead，handleWrite...。这下面的回调用于 handlexxx 函数中。
+    // conn->setConnectionCallback(m_connectionCallback);
+    // conn->setMessageCallback(m_messageCallback);
+    // conn->setWriteCompleteCallback(m_writeCompleteCallback);
+    // // 设置了如何关闭连接的回调。
+    // conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, std::placeholders::_1));
+
+    // // 向 ioLoop 投递 TcpConnection::connectEstablished() 回调函数。
+    // ioLoop->runInLoop(std::bind(&TcpConnection::connectEstablished, conn));
 }
 
 void TcpServer::removeConnection(const TcpConnectionPtr &conn)

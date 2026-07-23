@@ -52,7 +52,7 @@ public:
     void setThreadInitCallback(const ThreadInitCallback &cb) { m_threadInitCallback = cb; }
 
     // 设置底层 subloop 的个数。
-    void setThreadNum(int numThreads) { m_numThreads = numThreads, m_threadPool->setThreadNum(m_numThreads); }
+    void setThreadNum(int numThreads);
 
     // 如果没有监听，就启动服务器(监听)。多次调用没有副作用，线程安全。
     // TcpServer 启动 Tcp 服务器，主要是线程池的启动，mainLoop 跑 Acceptor 监听 Tcp 连接请求。线程池需要指定其初始数量，当然，这需要在 start() 之前调用 TcpServer::setThreadNum() 设置。
@@ -68,6 +68,7 @@ private:
     static EventLoop *CheckLoopNotNull(EventLoop *loop);
 
 
+    // 有一个新用户连接，acceptor 会执行这个回调操作，负责将 mainLoop 接收到的请求连接（acceptChannel 会有读事件发生），通过回调轮询分发给 subLoop 去处理。
     void newConnection(int sockfd, const InetAddress &peerAddr);
 
     void removeConnection(const TcpConnectionPtr &conn);
