@@ -17,7 +17,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
     LOG_DEBUG("func={} -> fd total count: {}", __FUNCTION__, m_channels.size());
 
     int saveErrno = errno;
-    Timestamp now(Timestamp::now());
+    Timestamp now(Timestamp::Now());
 
     // epoll的使用：
     // 1. epoll_create

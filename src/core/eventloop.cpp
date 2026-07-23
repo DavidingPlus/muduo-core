@@ -13,7 +13,7 @@
 static thread_local EventLoop *t_loopInThisThread = nullptr;
 
 
-int EventLoop::createEventfd()
+int EventLoop::CreateEventfd()
 {
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (evtfd < 0) LOG_FATAL("eventfd error: {}", errno);
@@ -21,7 +21,7 @@ int EventLoop::createEventfd()
 }
 
 EventLoop::EventLoop()
-    : m_poller(Poller::newDefaultPoller(this)), m_wakeupFd(createEventfd()), m_wakeupChannel(new Channel(this, m_wakeupFd))
+    : m_poller(Poller::NewDefaultPoller(this)), m_wakeupFd(CreateEventfd()), m_wakeupChannel(new Channel(this, m_wakeupFd))
 {
     if (t_loopInThisThread)
     {

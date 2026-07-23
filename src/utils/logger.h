@@ -14,7 +14,7 @@
 #define LOG_INFO(...)                                     \
     do                                                    \
     {                                                     \
-        Logger &logger = Logger::instance();              \
+        Logger &logger = Logger::Instance();              \
         logger.logFormatted(LogLevel::INFO, __VA_ARGS__); \
     } while (0)
 
@@ -22,7 +22,7 @@
 #define LOG_ERROR(...)                                     \
     do                                                     \
     {                                                      \
-        Logger &logger = Logger::instance();               \
+        Logger &logger = Logger::Instance();               \
         logger.logFormatted(LogLevel::ERROR, __VA_ARGS__); \
     } while (0)
 
@@ -30,7 +30,7 @@
 #define LOG_FATAL(...)                                     \
     do                                                     \
     {                                                      \
-        Logger &logger = Logger::instance();               \
+        Logger &logger = Logger::Instance();               \
         logger.logFormatted(LogLevel::FATAL, __VA_ARGS__); \
         std::abort();                                      \
     } while (0)
@@ -39,7 +39,7 @@
 #define LOG_DEBUG(...)                                     \
     do                                                     \
     {                                                      \
-        Logger &logger = Logger::instance();               \
+        Logger &logger = Logger::Instance();               \
         logger.logFormatted(LogLevel::DEBUG, __VA_ARGS__); \
     } while (0)
 #else
@@ -66,7 +66,7 @@ public:
 
     // 获取日志唯一的单例实例对象。
     // 采用内部静态变量的懒汉实现。详见：https://github.com/DavidingPlus/coroutine-lib/blob/master/snippet/Singleton/singleton1.h
-    static Logger &instance();
+    static Logger &Instance();
 
     // 写日志。[级别信息](time): msg
     void log(LogLevel level, const std::string &msg);

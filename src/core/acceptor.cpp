@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 
 
-int Acceptor::createSocketNonblocking()
+int Acceptor::CreateSocketNonblocking()
 {
     int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
     if (sockfd < 0) LOG_FATAL("{}:{}:{} listen socket create err: {}", __FILE__, __FUNCTION__, __LINE__, errno);
@@ -15,7 +15,7 @@ int Acceptor::createSocketNonblocking()
 }
 
 Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reuseport)
-    : m_mainLoop(loop), m_acceptSocket(createSocketNonblocking()), m_acceptChannel(m_mainLoop, m_acceptSocket.fd())
+    : m_mainLoop(loop), m_acceptSocket(CreateSocketNonblocking()), m_acceptChannel(m_mainLoop, m_acceptSocket.fd())
 {
     m_acceptSocket.setReuseAddr(true);
     m_acceptSocket.setReusePort(reuseport);

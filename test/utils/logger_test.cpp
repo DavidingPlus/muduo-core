@@ -33,11 +33,11 @@ protected:
 };
 
 
-// 验证 Logger::instance() 返回的是单例。
+// 验证 Logger::Instance() 返回的是单例。
 TEST_F(LoggerTest, Singleton)
 {
-    Logger &logger1 = Logger::instance();
-    Logger &logger2 = Logger::instance();
+    Logger &logger1 = Logger::Instance();
+    Logger &logger2 = Logger::Instance();
 
     // 两次获取应该是同一个对象。
     EXPECT_EQ(&logger1, &logger2);
@@ -46,9 +46,9 @@ TEST_F(LoggerTest, Singleton)
 // 验证默认 INFO 级别日志会带上正确的标签和消息。
 TEST_F(LoggerTest, DefaultLevel)
 {
-    Logger::instance().log(LogLevel::INFO, "hello");
+    Logger::Instance().log(LogLevel::INFO, "hello");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::INFO, "hello"); });
+                                { Logger::Instance().log(LogLevel::INFO, "hello"); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("hello"), std::string::npos);
@@ -57,9 +57,9 @@ TEST_F(LoggerTest, DefaultLevel)
 // 验证 INFO 级别的输出格式。
 TEST_F(LoggerTest, InfoLevel)
 {
-    Logger::instance().log(LogLevel::INFO, "info message");
+    Logger::Instance().log(LogLevel::INFO, "info message");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::INFO, "info message"); });
+                                { Logger::Instance().log(LogLevel::INFO, "info message"); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
     EXPECT_NE(output.find("info message"), std::string::npos);
@@ -68,9 +68,9 @@ TEST_F(LoggerTest, InfoLevel)
 // 验证 ERROR 级别的输出格式。
 TEST_F(LoggerTest, ErrorLevel)
 {
-    Logger::instance().log(LogLevel::ERROR, "error message");
+    Logger::Instance().log(LogLevel::ERROR, "error message");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::ERROR, "error message"); });
+                                { Logger::Instance().log(LogLevel::ERROR, "error message"); });
 
     EXPECT_NE(output.find("[ ERROR ]"), std::string::npos);
     EXPECT_NE(output.find("error message"), std::string::npos);
@@ -79,9 +79,9 @@ TEST_F(LoggerTest, ErrorLevel)
 // 验证 FATAL 级别的输出格式。
 TEST_F(LoggerTest, FatalLevel)
 {
-    Logger::instance().log(LogLevel::FATAL, "fatal message");
+    Logger::Instance().log(LogLevel::FATAL, "fatal message");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::FATAL, "fatal message"); });
+                                { Logger::Instance().log(LogLevel::FATAL, "fatal message"); });
 
 
     EXPECT_NE(output.find("[ FATAL ]"), std::string::npos);
@@ -91,9 +91,9 @@ TEST_F(LoggerTest, FatalLevel)
 // 验证 DEBUG 级别的输出格式。
 TEST_F(LoggerTest, DebugLevel)
 {
-    Logger::instance().log(LogLevel::DEBUG, "debug message");
+    Logger::Instance().log(LogLevel::DEBUG, "debug message");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::DEBUG, "debug message"); });
+                                { Logger::Instance().log(LogLevel::DEBUG, "debug message"); });
 
     EXPECT_NE(output.find("[ DEBUG ]"), std::string::npos);
     EXPECT_NE(output.find("debug message"), std::string::npos);
@@ -102,9 +102,9 @@ TEST_F(LoggerTest, DebugLevel)
 // 验证日志里会打印日期、时间和微秒字段。
 TEST_F(LoggerTest, TimestampFormat)
 {
-    Logger::instance().log(LogLevel::INFO, "timestamp test");
+    Logger::Instance().log(LogLevel::INFO, "timestamp test");
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::INFO, "timestamp test"); });
+                                { Logger::Instance().log(LogLevel::INFO, "timestamp test"); });
 
     /*
      * Logger 输出格式：
@@ -126,7 +126,7 @@ TEST_F(LoggerTest, TimestampFormat)
 TEST_F(LoggerTest, EmptyMessage)
 {
     auto output = captureOutput([]()
-                                { Logger::instance().log(LogLevel::INFO, ""); });
+                                { Logger::Instance().log(LogLevel::INFO, ""); });
 
     EXPECT_NE(output.find("[ INFO ]"), std::string::npos);
 }
@@ -136,7 +136,7 @@ TEST_F(LoggerTest, SpecialCharacters)
 {
     std::string msg = "hello\nworld\t123";
     auto output = captureOutput([&]()
-                                { Logger::instance().log(LogLevel::INFO, msg); });
+                                { Logger::Instance().log(LogLevel::INFO, msg); });
 
     EXPECT_NE(output.find("hello"), std::string::npos);
     EXPECT_NE(output.find("world"), std::string::npos);

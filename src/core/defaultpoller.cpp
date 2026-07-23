@@ -5,7 +5,7 @@
 #include <cstdlib>
 
 
-Poller *Poller::newDefaultPoller(EventLoop *loop)
+Poller *Poller::NewDefaultPoller(EventLoop *loop)
 {
     const char *poller = ::getenv("MUDUO_DEFAULT_POLLER");
 

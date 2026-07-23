@@ -16,11 +16,11 @@ using namespace std::chrono_literals;
 // 验证默认构造会生成线程名，并递增已创建线程计数。
 TEST(ThreadTest, ConstructorAssignsDefaultNameAndIncrementsCounter)
 {
-    const int before = Thread::numCreated();
+    const int before = Thread::NumCreated();
 
     Thread thread([]() {});
 
-    EXPECT_EQ(Thread::numCreated(), before + 1);
+    EXPECT_EQ(Thread::NumCreated(), before + 1);
     EXPECT_EQ(thread.name(), "Thread" + std::to_string(before + 1));
     EXPECT_FALSE(thread.started());
     EXPECT_EQ(thread.tid(), 0);

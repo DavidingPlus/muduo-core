@@ -6,7 +6,7 @@
 #include <fmt/chrono.h>
 
 
-Timestamp Timestamp::now()
+Timestamp Timestamp::Now()
 {
     // 获取当前系统时间。
     // 注意，因为是要获取绝对时间，因此不能使用只单调递增的 steady_clock，因为系统的绝对时间可能改变。

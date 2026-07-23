@@ -18,7 +18,7 @@ public:
     int64_t microSecondsSinceEpoch() const { return m_microSecondsSinceEpoch; }
 
     // 获取当前系统时间戳。
-    static Timestamp now();
+    static Timestamp Now();
 
     std::string toString() const;
 

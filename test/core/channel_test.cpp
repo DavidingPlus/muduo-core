@@ -168,7 +168,7 @@ TEST(ChannelTest, TieSuppressesCallbacksAfterOwnerExpires)
     owner.reset();
 
     channel.setRevents(EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP);
-    channel.handleEvent(Timestamp::now());
+    channel.handleEvent(Timestamp::Now());
 
     EXPECT_EQ(callbackCount.load(), 0);
 }
@@ -187,7 +187,7 @@ TEST(ChannelTest, TieKeepsCallbacksActiveWhileOwnerExists)
                             { ++readCount; });
 
     channel.setRevents(EPOLLPRI);
-    channel.handleEvent(Timestamp::now());
+    channel.handleEvent(Timestamp::Now());
 
     EXPECT_EQ(readCount.load(), 1);
 }

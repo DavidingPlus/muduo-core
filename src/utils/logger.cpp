@@ -6,7 +6,7 @@
 #include <iostream>
 
 
-Logger &Logger::instance()
+Logger &Logger::Instance()
 {
     // 详见：https://github.com/DavidingPlus/coroutine-lib/blob/master/snippet/Singleton/singleton1.cpp
     static Logger logger;
@@ -37,7 +37,7 @@ void Logger::log(LogLevel level, const std::string &msg)
 
     {
         LogColorGuard guard(level);
-        std::cout << levelText + '[' + Timestamp::now().toString() + "]";
+        std::cout << levelText + '[' + Timestamp::Now().toString() + "]";
     }
 
     std::cout << ' ' << msg << std::endl;

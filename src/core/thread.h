@@ -35,7 +35,7 @@ public:
 
     const std::string &name() const { return m_name; }
 
-    static int numCreated() { return m_numCreated; }
+    static int NumCreated() { return m_numCreated; }
 
 
 private:

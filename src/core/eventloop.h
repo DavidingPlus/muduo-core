@@ -80,7 +80,7 @@ private:
      */
 
     // 创建 wakeupfd 用来 notify 唤醒 subReactor 处理新来的 channel。
-    static int createEventfd();
+    static int CreateEventfd();
 
 
     // 给 eventfd 返回的文件描述符 m_wakeupFd 绑定的事件回调。当 wakeup() 时，即有事件发生时调用 handleRead() 读 m_wakeupFd 的 8 字节，同时唤醒阻塞的 epoll_wait。

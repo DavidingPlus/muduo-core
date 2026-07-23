@@ -99,7 +99,7 @@ namespace
 
     Timestamp StubPoller::poll(int, ChannelList *)
     {
-        return Timestamp::now();
+        return Timestamp::Now();
     }
 
     // 生成一个非阻塞、close-on-exec 的 eventfd 作为测试源。
@@ -151,14 +151,14 @@ TEST(PollerTest, DefaultFactoryHonorsConfiguredImplementation)
     // 先清空环境变量，确认默认分支会回落到 EPollPoller。
     ::unsetenv("MUDUO_DEFAULT_POLLER");
     {
-        std::unique_ptr<Poller> poller(Poller::newDefaultPoller(nullptr));
+        std::unique_ptr<Poller> poller(Poller::NewDefaultPoller(nullptr));
         ASSERT_NE(poller, nullptr);
         EXPECT_NE(dynamic_cast<EPollPoller *>(poller.get()), nullptr);
     }
 
     // 再切到不支持的实现名，确认工厂会拒绝创建。
     ::setenv("MUDUO_DEFAULT_POLLER", "Poll", 1);
-    EXPECT_EQ(Poller::newDefaultPoller(nullptr), nullptr);
+    EXPECT_EQ(Poller::NewDefaultPoller(nullptr), nullptr);
 }
 
 // 验证 epoll 事件能被投递到 Channel 回调，同时 EventLoop 会记录轮询返回时间。

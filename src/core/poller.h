@@ -45,7 +45,7 @@ public:
 
 
     // EventLoop 可以通过该接口获取默认的 IO 复用的具体实现。
-    static Poller *newDefaultPoller(EventLoop *loop);
+    static Poller *NewDefaultPoller(EventLoop *loop);
 
 
 protected:
