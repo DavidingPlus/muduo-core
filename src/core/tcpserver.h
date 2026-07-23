@@ -63,6 +63,10 @@ private:
     using ConnectionMap = std::unordered_map<std::string, TcpConnectionPtr>;
 
 
+    // 用于构造函数中，首先判断传入的 loop 是否有效，无效直接终止程序。
+    static EventLoop *CheckLoopNotNull(EventLoop *loop);
+
+
     void newConnection(int sockfd, const InetAddress &peerAddr);
 
     void removeConnection(const TcpConnectionPtr &conn);
@@ -71,7 +75,7 @@ private:
 
 
     // 主线程 的 loop。
-    EventLoop *m_mainLoop;
+    EventLoop *m_mainLoop = nullptr;
 
     // one loop per thread。
     // shared_ptr 表示共享所有权，多个 shared_ptr 可以同时指向同一个对象。它通过控制块中的引用计数记录当前持有者数量，当最后一个 shared_ptr 被销毁时，引用计数归零，对象才会被释放。shared_ptr 适用于对象生命周期无法由单一所有者确定的场景，例如多个模块、多个回调共同持有同一个连接对象。但由于需要维护引用计数，会带来额外的内存和性能开销，并且需要注意循环引用导致的资源泄漏问题。
@@ -98,11 +102,11 @@ private:
     ThreadInitCallback m_threadInitCallback;
 
     // 线程池中线程的数量。
-    int m_numThreads;
+    int m_numThreads = 0;
 
-    std::atomic_int m_started;
+    std::atomic_int m_started = 0;
 
-    int m_nextConnId;
+    int m_nextConnId = 1;
 
     // 保存所有的连接。
     ConnectionMap m_connections;
