@@ -14,6 +14,7 @@
 #include <atomic>
 
 class EventLoop;
+class Timestamp;
 
 
 // TcpServer -> Acceptor -> 有一个新用户连接，通过 accept 函数拿到 connfd -> TcpConnection 设置回调 -> 设置到 Channel -> Poller -> Channel 回调。
@@ -77,6 +78,20 @@ private:
 
     void setState(StateE state) { m_state = state; }
 
+    void handleRead(Timestamp receiveTime);
+
+    void handleWrite();
+
+    void handleClose();
+
+    void handleError();
+
+    void sendInLoop(const void *data, size_t len);
+
+    void shutdownInLoop();
+
+    void sendFileInLoop(int fileDescriptor, off_t offset, size_t count);
+
 
     // 这里是 mainLoop 还是 subLoop 由 TcpServer 中创建的线程数决定。若为多 Reactor，该 loop 指向 subLoop，若为单 Reactor，该 loop 指向 mainLoop。
     EventLoop *m_loop = nullptr;
@@ -87,10 +102,11 @@ private:
 
     const InetAddress m_peerAddr;
 
-    std::atomic<StateE> m_state;
+    // 因为 TcpConnection 建立的时候已经是 TcpServer 收到连接请求了，因此状态是正在连接。
+    std::atomic<StateE> m_state = StateE::kConnecting;
 
-    // 连接是否在监听读事件。
-    bool m_reading;
+    // 连接是否在监听读事件。同理因为 TcpConnection 建立的时候已经是 TcpServer 收到连接请求了，因此肯定正在监听读事件。
+    bool m_reading = true;
 
     // 这里和 Acceptor 类似。区别是 Acceptor 对应 mainloop，TcpConnection -> subloop，二者的定位和分工不同。
     std::unique_ptr<Socket> m_socket;
@@ -114,8 +130,8 @@ private:
     // 高水位回调。
     HighWaterMarkCallback m_highWaterMarkCallback;
 
-    // 高水位阈值。
-    size_t m_highWaterMark;
+    // 高水位阈值，这里设置为 64 M。
+    size_t m_highWaterMark = 64 * 1024 * 1024;
 
     // 接收数据的缓冲区。
     Buffer m_inputBuffer;

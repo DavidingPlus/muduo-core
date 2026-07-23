@@ -8,7 +8,7 @@
 
 
 TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &name, Option option)
-    : m_mainLoop(NetUtils::CheckLoopNotNull(loop)), m_ipPort(listenAddr.toIpPort()), m_name(name), m_acceptor(std::make_unique<Acceptor>(loop, listenAddr, Option::kReusePort == option)), m_threadPool(new EventLoopThreadPool(m_mainLoop, m_name))
+    : m_mainLoop(NetUtils::CheckLoopNotNull(loop)), m_ipPort(listenAddr.toIpPort()), m_name(name), m_acceptor(std::make_unique<Acceptor>(m_mainLoop, listenAddr, Option::kReusePort == option)), m_threadPool(new EventLoopThreadPool(m_mainLoop, m_name))
 {
     // 当有新用户连接时，Acceptor 类中绑定的 m_acceptChannel 会有读事件发生，执行 handleRead() 调用 TcpServer::newConnection() 回调。
     // 对应 Acceptor::handleRead() 中的 m_newConnectionCallback(connfd, peerAddr);
