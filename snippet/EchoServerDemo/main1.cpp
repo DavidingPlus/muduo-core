@@ -41,16 +41,17 @@ private:
         }
     }
 
-    // 可读写事件回调
+    // 可读写事件回调。
     void onMessage(const TcpConnectionPtr &conn, Buffer &buf, const Timestamp &time)
     {
         std::string msg = buf.retrieveAllAsString();
         conn->send(msg);
-        // conn->shutdown();   // 关闭写端，底层响应 EPOLLHUP -> 执行 m_closeCallback。
+        // conn->shutdown(); // 关闭写端，底层响应 EPOLLHUP -> 执行 m_closeCallback。
     }
 
 
     TcpServer m_server;
+
     EventLoop *m_loop = nullptr;
 };
 

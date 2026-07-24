@@ -50,7 +50,7 @@ void TcpServer::start()
         // 先启动 subLoop 线程池，创建并初始化 IO 工作线程。后续接收到的新连接会被分配给这些 subLoop 处理。
         m_threadPool->start(m_threadInitCallback);
         // subLoop 准备完成后，再让 mainLoop 开始监听 accept socket。这样可以保证新连接到来时，已经存在可用的 IO 工作线程处理连接。
-        // 注意：m_mainLoop 作为 TcpServer 的主控制 EventLoop，不参与实际的 IO 事件调度。与 subLoop 不同，mainLoop 不调用 loop() 进入 Reactor 循环，因为 loop() 会驱动 Poller 监听文件描述符并分发 Channel 事件，这属于 IO 工作线程的职责。mainLoop 主要用于跨线程提交任务，例如通过 runInLoop() 将 Acceptor::listen() 投递到 mainLoop 所在线程执行，保证监听 socket 的初始化操作在线程安全的上下文中完成。subLoop 线程池中的 EventLoop 才负责真正运行事件循环，处理连接建立后的读写事件。这也是为什么 EventLoop 提供了 loop() 和 runInLoop()/queueInLoop() 两类函数，对应了 EventLoop 处理的两类回调操作。
+        // 注意：与 subLoop 不同，m_mainLoop 作为 TcpServer 的主控制 EventLoop，在 TcpServer 内部不使用 mainLoop->loop() 进入 Reactor 循环，loop() 会驱动 Poller 监听文件描述符并分发 Channel 事件，主线程和 IO 线程当然都需要，只是职责不同。那为什么不能用呢？因为这个工作是用户主程序创建完主事件循环和 TcpServer 手动调用的。这里通过 runInLoop() 将 Acceptor::listen() 投递到 mainLoop 所在线程执行，保证监听 socket 的初始化操作在线程安全的上下文中完成。subLoop 线程池中的 EventLoop 处理连接建立后的读写事件。
         m_mainLoop->runInLoop(std::bind(&Acceptor::listen, m_acceptor.get()));
     }
 }
