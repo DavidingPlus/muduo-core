@@ -29,8 +29,6 @@ namespace NetTestUtils
         if (m_fd >= 0) ::close(m_fd);
     }
 
-    ScopedFd::ScopedFd(ScopedFd &&other) noexcept : m_fd(other.release()) {}
-
     ScopedFd &ScopedFd::operator=(ScopedFd &&other) noexcept
     {
         if (this != &other) reset(other.release());
