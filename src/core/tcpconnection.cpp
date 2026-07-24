@@ -78,7 +78,7 @@ void TcpConnection::connectEstablished()
 
 void TcpConnection::connectDestroyed()
 {
-    // TODO 这个条件判断是啥意思？
+    // connectDestroyed() 既可能在 handleClose() 之后调用，也可能在 TcpServer 析构时直接调用。如果前者，连接状态、disableAll 和 connectionCallback 都已经再 handleClose() 处理过了，这里不要重复执行；如果后者，连接仍处于 kConnected，需要在这里补做断开收尾。
     if (connected())
     {
         setState(StateE::kDisconnected);
@@ -159,6 +159,7 @@ void TcpConnection::handleClose()
     setState(StateE::kDisconnected);
     m_channel->disableAll();
 
+    // 同 TcpServer::~TcpServer()，这里先保存一份 shared_ptr 副本，不是为了传参方便，而是为了在后续多个回调执行期间“保活”当前 TcpConnection。原因是 closeCallback 最终会走到 TcpServer::removeConnection() -> connectDestroyed()，它可能触发连接从容器中移除并进入销毁路径。用本地 connPtr 持有一份强引用，可以明确保证：即使回调内部发生删除连接等操作，当前 handleClose() 返回前对象也不会提前析构。
     TcpConnectionPtr connPtr(shared_from_this());
     // 执行连接状态变化回调。
     m_connectionCallback(connPtr);
