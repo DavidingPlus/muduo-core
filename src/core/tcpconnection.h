@@ -42,7 +42,7 @@ public:
 
     // send()、sendFile() 和 shutdown() 内部都会调用和事件循环相关的 xxxInLoop() 的私有函数。
 
-    // 发送数据。
+    // 用户主动发送数据。
     void send(const std::string &buf);
 
     void sendFile(int fileDescriptor, off_t offset, size_t count);
@@ -74,15 +74,17 @@ private:
         kDisconnected, // 已经断开连接。
         kConnecting,   // 正在连接。
         kConnected,    // 已连接。
-        kDisconnecting // 正在断开连接。
+        kDisconnecting // 正在断开连接。这里不是“连接已不可用”，而是“本端已经请求关闭写方向，进入优雅关闭阶段”。第一，不再接受新的业务发送请求，因此外部 send()/sendFile() 会被 connected() 判断拦住。第二，允许之前已经进入发送流程的数据继续发完，避免丢失 m_outputBuffer 中的待发送数据。第三，待输出缓冲区清空后，再由 shutdownInLoop() 真正 shutdownWrite() 发送 FIN。
     };
 
 
     void setState(StateE state) { m_state = state; }
 
     // 读是对服务器而言的，当对端客户端有数据到达，服务器端检测到 EPOLLIN，就会触发该 fd 上的回调，handleRead() 取读走对端发来的数据。
+    // TcpConnection 对 EPOLLIN 事件的处理函数。与发送流程不同，接收数据不是由用户主动发起的，应用程序无法调用类似 recv() "请求读取数据"。handleRead() 负责的是："响应网络事件，读取对端发送的数据，并交给业务处理"，它处理的是已经到达内核的数据，而不是主动向对端请求数据。
     void handleRead(Timestamp receiveTime);
 
+    // TcpConnection 对 EPOLLOUT 事件的处理函数。当 sendInLoop() 发现一次 write 无法发送全部数据时，会把剩余数据保存到 m_outputBuffer，并向 epoll 注册写事件。当 TCP 内核发送缓冲区重新可写时，此时 handleWrite() 被调用，将 m_outputBuffer，并向 中缓存的数据继续写入 socket。handleWrite() 负责的是："处理之前未发送完成的数据，完成异步发送流程"，它处理的是 m_outputBuffer 中的历史数据，而不是新的业务发送请求。
     void handleWrite();
 
     // 处理连接关闭的回调。
@@ -91,6 +93,8 @@ private:
     // 处理连接运行中发生错误的回调。Channel 在处理通道事件 handleEvent 时，如果发生错误（即不是读取数据，也不是写数据完成）调用。链路：Channel::handleEvent() -> 检测到错误，调用Channel::errorCallback() -> TcpConnection::handleError()。
     void handleError();
 
+    // 发送数据。应用写的快，而内核发送数据慢，需要把待发送数据写入缓冲区，而且设置了水位回调。
+    // TcpConnection 的主动发送入口。当业务层调用 TcpConnection::send() 时，最终会进入该函数。它负责将用户产生的新数据发送到 TCP socket。这里要区分两类数据：第一，“新的业务发送请求”：由 send()/sendFile() 触发，走 sendInLoop()。第二，“之前没发完的历史数据”：保存在 m_outputBuffer 中，等待 EPOLLOUT 到来后由 handleWrite() 继续发送。sendInLoop() 主要处理第 1 类；handleWrite() 主要处理第 2 类。
     void sendInLoop(const void *data, size_t len);
 
     void sendFileInLoop(int fileDescriptor, off_t offset, size_t count);
