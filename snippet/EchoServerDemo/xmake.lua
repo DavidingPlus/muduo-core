@@ -1,11 +1,11 @@
 target("EchoServerDemo1")
     set_kind("binary")
-    add_files("main1.cpp")
+    add_files("main1.cpp", "baseechoserver.cpp")
     add_deps("muduo-core")
 target_end()
 
 target("EchoServerDemo2")
     set_kind("binary")
-    add_files("main2.cpp")
+    add_files("main2.cpp", "baseechoserver.cpp", "autoquitechoserver.cpp")
     add_deps("muduo-core")
 target_end()
