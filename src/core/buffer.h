@@ -75,11 +75,12 @@ public:
 
     const char *beginWrite() const { return begin() + m_writerIndex; }
 
-    // fd -> Buffer，把新数据写入 writable 区域，然后让它加入 readable 区域。
+    // fd -> Buffer，把新数据写入 writable 区域，然后让它加入 readable 区域。如果 Buffer 当前可写空间不足，会先借助栈上的临时缓冲区（extraBuf）接收剩余数据，再追加到 Buffer。因此 readFd() 不仅负责执行 readv()，还负责维护 Buffer 的内部状态（writerIndex），使新读入的数据立即成为 readable 区域。
     // errno 通过引用返回，语义上表示“调用者必须提供一个可写的错误码接收对象”。
     ssize_t readFd(int fd, int &saveErrno);
 
     // Buffer -> fd，把 readable 区域的数据发送出去。
+    // 注意：writeFd() 只负责调用 write() 发送数据，并返回实际发送的字节数，不会修改 Buffer，也不会消费 readable 数据。是否调用 retrieve() 移除已发送的数据，由上层（如 TcpConnection::handleWrite()）根据发送结果决定，这样可以在发送完成后继续执行关闭写事件、触发 writeComplete 回调、半关闭连接等后续逻辑，职责划分更加清晰。
     ssize_t writeFd(int fd, int &saveErrno);
 
 

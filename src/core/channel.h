@@ -79,10 +79,14 @@ public:
     void disableAll() { m_events = kNoneEvent, update(); }
 
     // 返回 fd 当前的事件状态。
+
+    // 监听无事件。
     bool isNoneEvent() const { return m_events == kNoneEvent; }
 
+    // 正在监听写事件。
     bool isWriting() const { return m_events & kWriteEvent; }
 
+    // 正在监听读事件。
     bool isReading() const { return m_events & kReadEvent; }
 
     int index() { return m_index; }

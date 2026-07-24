@@ -110,7 +110,7 @@ void TcpConnection::handleRead(Timestamp receiveTime)
     else
     {
         errno = savedErrno;
-        LOG_ERROR("TcpConnection::handleRead() failed");
+        LOG_ERROR("TcpConnection::handleRead() failed, errno:{}", errno);
 
         handleError();
     }
@@ -118,6 +118,36 @@ void TcpConnection::handleRead(Timestamp receiveTime)
 
 void TcpConnection::handleWrite()
 {
+    if (m_channel->isWriting())
+    {
+        int savedErrno = 0;
+        ssize_t n = m_outputBuffer.writeFd(m_channel->fd(), savedErrno);
+        if (n > 0)
+        {
+            // Buffer 的语义设计是 writeFd 只负责发送数据，真正消费 retrieve 数据由调用者决定。
+            m_outputBuffer.retrieve(n);
+            // 如果发送缓冲区已经空了，说明当前发送任务完成。
+            if (0 == m_outputBuffer.readableBytes())
+            {
+                // 停止监听写事件。
+                m_channel->disableWriting();
+                // TcpConnection 对象在其所在的 subloop 中，向 pendingFunctors 中投递回调。
+                if (m_writeCompleteCallback) m_loop->queueInLoop(std::bind(m_writeCompleteCallback, shared_from_this()));
+                // 如果处于正在断开连接 kDisconnecting 状态，说明用户之前调用过 shutdown()（也应该由用户调用）。shutdown() 的调用链不会立即关闭 TCP 写端，而是先进入 kDisconnecting 状态，等待 m_outputBuffer 中剩余数据全部发送完成，避免未发送数据丢失。
+                // 具体理解：conn->send("hello"); conn->shutdown()。此时：state == kDisconnecting；m_outputBuffer = "hello"。用户手动调用 shutdown() 进而 shutdownInLoop() 时，由于还有待发送数据，shutdownInLoop() 中的 !m_channel->isWriting() 判断不会满足，不会立即发送 TCP FIN。后续 handleWrite() 将 m_outputBuffer 中的数据全部发送完成后，会调用 m_channel->disableWriting() 停止监听 EPOLLOUT，此时说明发送缓冲区已经清空，可以再次进入 shutdownInLoop()，安全关闭 TCP 写端，发送 FIN，实现延迟优雅关闭。
+                if (StateE::kDisconnecting == m_state) shutdownInLoop();
+            }
+        }
+        else
+        {
+            errno = savedErrno;
+            LOG_ERROR("TcpConnection::handleWrite() writeFd failed, errno:{}", errno);
+        }
+    }
+    else
+    {
+        LOG_ERROR("TcpConnection fd={} is down, no more writing", m_channel->fd());
+    }
 }
 
 void TcpConnection::handleClose()
@@ -157,10 +187,13 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
 {
 }
 
-void TcpConnection::shutdownInLoop()
+void TcpConnection::sendFileInLoop(int fileDescriptor, off_t offset, size_t count)
 {
 }
 
-void TcpConnection::sendFileInLoop(int fileDescriptor, off_t offset, size_t count)
+void TcpConnection::shutdownInLoop()
 {
+    // 此私有函数由共有函数 shutdown() 通过 runInLoop() 投递，已经保证执行事件循环的语义，并且执行逻辑非常简单，因此可以直接执行业务逻辑而无需再次投递。
+    // 若当前 m_channel 还处于正在写状态，无法半关闭。当 m_outputBuffer 的数据全部向外发送完成，可以切换为本端写半关闭。
+    if (!m_channel->isWriting()) m_socket->shutdownWrite();
 }

@@ -14,12 +14,12 @@
 
 void Socket::bindAddress(const InetAddress &localaddr)
 {
-    if (0 != ::bind(m_sockfd, (sockaddr *)localaddr.getSockAddr(), sizeof(sockaddr_in))) LOG_FATAL("bind sockfd: {} failed", m_sockfd);
+    if (0 != ::bind(m_sockfd, (sockaddr *)localaddr.getSockAddr(), sizeof(sockaddr_in))) LOG_FATAL("Socket::bindAddress sockfd: {} failed", m_sockfd);
 }
 
 void Socket::listen()
 {
-    if (0 != ::listen(m_sockfd, 1024)) LOG_FATAL("listen sockfd: {} failed", m_sockfd);
+    if (0 != ::listen(m_sockfd, 1024)) LOG_FATAL("Socket::listen() sockfd: {} failed", m_sockfd);
 }
 
 int Socket::accept(InetAddress *peeraddr)
@@ -42,7 +42,7 @@ void Socket::shutdownWrite()
     // 1. 向对端发送 FIN，表示本端不会再发送数据；
     // 2. 仍然可以继续接收对端数据。
     // 与 close() 不同，close() 会同时关闭读写两个方向。Reactor 网络库通常使用半关闭，保证发送缓冲区数据发送完成后再优雅关闭连接。
-    if (::shutdown(m_sockfd, SHUT_WR) < 0) LOG_ERROR("shutdownWrite error");
+    if (::shutdown(m_sockfd, SHUT_WR) < 0) LOG_ERROR("Socket::shutdownWrite() error");
 }
 
 void Socket::setTcpNoDelay(bool on)
