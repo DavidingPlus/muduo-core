@@ -87,9 +87,7 @@ target("muduo-core")
         os.mkdir(target:installdir())
 
         os.cp("$(builddir)/$(plat)/$(arch)/$(mode)/.version", target:installdir())
-    end)
 
-    after_install(function (target)
         local export_headers = import(export_headers_module, export_headers_import_options)
         export_headers.install_export_public_headers(target, target:installdir())
     end)
