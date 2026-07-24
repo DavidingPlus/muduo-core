@@ -5,8 +5,9 @@
 #include "logger.h"
 #include "netutils.h"
 
+
 Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reuseport)
-    : m_mainLoop(loop), m_acceptSocket(NetUtils::CreateSocketNonblocking()), m_acceptChannel(m_mainLoop, m_acceptSocket.fd())
+    : m_mainLoop(NetUtils::CheckLoopNotNull(loop)), m_acceptSocket(NetUtils::CreateSocketNonblocking()), m_acceptChannel(NetUtils::CheckLoopNotNull(loop), m_acceptSocket.fd())
 {
     m_acceptSocket.setReuseAddr(true);
     m_acceptSocket.setReusePort(reuseport);

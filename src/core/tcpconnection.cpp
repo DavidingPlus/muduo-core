@@ -9,7 +9,7 @@
 
 
 TcpConnection::TcpConnection(EventLoop *loop, const std::string &name, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
-    : m_loop(NetUtils::CheckLoopNotNull(loop)), m_name(name), m_socket(new Socket(sockfd)), m_channel(new Channel(m_loop, sockfd)), m_localAddr(localAddr), m_peerAddr(peerAddr)
+    : m_loop(NetUtils::CheckLoopNotNull(loop)), m_name(name), m_localAddr(localAddr), m_peerAddr(peerAddr), m_socket(new Socket(sockfd)), m_channel(new Channel(NetUtils::CheckLoopNotNull(loop), sockfd))
 {
     // 不能在构造函数中用 shared_from_this()，因为对象还在构造中，shared_ptr 的控制块通常还没建立好。同时这里直接绑定 this 是安全的，等后面 connectEstablished() 里再通过 tie(shared_from_this()) 保护生命周期。只有 TcpConnection 还活着时，Channel 才会真正分发事件回调。
     m_channel->setReadCallback(std::bind(&TcpConnection::handleRead, this, std::placeholders::_1));

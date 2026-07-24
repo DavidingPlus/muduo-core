@@ -8,8 +8,12 @@
 #include "tcpconnection.h"
 
 
+// 这里不能简单的直接使用 m_name 或 m_mainLoop 去初始化后面的成员来“图省事”。原因有两个：
+// 1. C++ 成员初始化的真实执行顺序只看类里的声明顺序，不看这里初始化列表的书写顺序。如果想要使用的话必须在代码里保证声明顺序的正确性。
+// 2. TcpServer 中 m_threadPool 声明在 m_name 前面；如果写成用 m_name 初始化 m_threadPool，即使初始化列表里把 m_name 写在前面，执行到 m_threadPool 时 m_name 仍然尚未构造，属于未定义行为。
+// 因此这里凡是构造阶段本来就能直接使用的输入，都建议使用构造参数 loop/name/listenAddr，而不是绕一层成员，避免以后调整成员声明顺序或初始化列表时再次埋入同类 bug。
 TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &name, Option option)
-    : m_mainLoop(NetUtils::CheckLoopNotNull(loop)), m_ipPort(listenAddr.toIpPort()), m_name(name), m_acceptor(std::make_unique<Acceptor>(m_mainLoop, listenAddr, Option::kReusePort == option)), m_threadPool(new EventLoopThreadPool(m_mainLoop, m_name))
+    : m_mainLoop(NetUtils::CheckLoopNotNull(loop)), m_threadPool(new EventLoopThreadPool(NetUtils::CheckLoopNotNull(loop), name)), m_ipPort(listenAddr.toIpPort()), m_name(name), m_acceptor(std::make_unique<Acceptor>(NetUtils::CheckLoopNotNull(loop), listenAddr, Option::kReusePort == option))
 {
     // 当有新用户连接时，Acceptor 类中绑定的 m_acceptChannel 会有读事件发生，执行 handleRead() 调用 TcpServer::newConnection() 回调。
     // 对应 Acceptor::handleRead() 中的 m_newConnectionCallback(connfd, peerAddr);
