@@ -94,7 +94,7 @@ void TcpConnection::connectDestroyed()
     m_channel->remove();
 }
 
-void TcpConnection::handleRead(Timestamp receiveTime)
+void TcpConnection::handleRead(const Timestamp &receiveTime)
 {
     int savedErrno = 0;
     ssize_t n = m_inputBuffer.readFd(m_channel->fd(), savedErrno);
@@ -102,7 +102,7 @@ void TcpConnection::handleRead(Timestamp receiveTime)
     if (n > 0)
     {
         // 已建立连接的用户有可读事件发生了，调用用户传入的回调操作 m_messageCallback，shared_from_this 用于安全地获取 TcpConnection 的智能指针。
-        m_messageCallback(shared_from_this(), &m_inputBuffer, receiveTime);
+        m_messageCallback(shared_from_this(), m_inputBuffer, receiveTime);
     }
     // 客户端断开。
     else if (0 == n)

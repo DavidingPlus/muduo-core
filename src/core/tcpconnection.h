@@ -82,7 +82,7 @@ private:
 
     // 读是对服务器而言的，当对端客户端有数据到达，服务器端检测到 EPOLLIN，就会触发该 fd 上的回调，handleRead() 取读走对端发来的数据。
     // TcpConnection 对 EPOLLIN 事件的处理函数。与发送流程不同，接收数据不是由用户主动发起的，应用程序无法调用类似 recv() "请求读取数据"。handleRead() 负责的是："响应网络事件，读取对端发送的数据，并交给业务处理"，它处理的是已经到达内核的数据，而不是主动向对端请求数据。
-    void handleRead(Timestamp receiveTime);
+    void handleRead(const Timestamp &receiveTime);
 
     // TcpConnection 对 EPOLLOUT 事件的处理函数。当 sendInLoop() 发现一次 write 无法发送全部数据时，会把剩余数据保存到 m_outputBuffer，并向 epoll 注册写事件。当 TCP 内核发送缓冲区重新可写时，此时 handleWrite() 被调用，将 m_outputBuffer，并向 中缓存的数据继续写入 socket。handleWrite() 负责的是："处理之前未发送完成的数据，完成异步发送流程"，它处理的是 m_outputBuffer 中的历史数据，而不是新的业务发送请求。
     void handleWrite();
