@@ -43,7 +43,7 @@ public:
     // send()、sendFile() 和 shutdown() 内部都会调用和事件循环相关的 xxxInLoop() 的私有函数。
 
     // 用户主动发送数据。
-    void send(const std::string &buf);
+    void send(const std::string &data);
 
     void sendFile(int fileDescriptor, off_t offset, size_t count);
 
@@ -95,7 +95,7 @@ private:
 
     // 发送数据。应用写的快，而内核发送数据慢，需要把待发送数据写入缓冲区，而且设置了水位回调。
     // TcpConnection 的主动发送入口。当业务层调用 TcpConnection::send() 时，最终会进入该函数。它负责将用户产生的新数据发送到 TCP socket。这里要区分两类数据：第一，“新的业务发送请求”：由 send()/sendFile() 触发，走 sendInLoop()。第二，“之前没发完的历史数据”：保存在 m_outputBuffer 中，等待 EPOLLOUT 到来后由 handleWrite() 继续发送。sendInLoop() 主要处理第 1 类；handleWrite() 主要处理第 2 类。
-    void sendInLoop(const void *data, size_t len);
+    void sendInLoop(const std::string &data);
 
     void sendFileInLoop(int fileDescriptor, off_t offset, size_t count);
 

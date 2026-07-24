@@ -27,16 +27,15 @@ TcpConnection::~TcpConnection()
     LOG_INFO("TcpConnection::dtor[{}] at fd={} state={}", m_name, m_channel->fd(), static_cast<int>(m_state.load()));
 }
 
-void TcpConnection::send(const std::string &buf)
+void TcpConnection::send(const std::string &data)
 {
     // 和构造函数中不同，这里应该用 shared_from_this()。因为发送逻辑可能被投递到别的线程执行，所以这里要先用 shared_from_this() 把对象“保活”。否则如果回调稍后才执行，而 TcpConnection 已经被释放，就会访问悬空对象。
     // send() 只允许在 kConnected 状态下进入，含义是：一旦用户已经发起 shutdown()，状态变为 kDisconnecting，就不再接受新的业务发送请求。但这并不影响之前已经进入发送流程的数据继续发送完毕；那部分收尾工作由 sendInLoop()/handleWrite() 负责。
     if (connected())
     {
-        // 这里必须把业务层传入的数据拷贝进投递对象中。send() 返回后，调用者传入的 std::string 可能已经析构，若只捕获 buf.c_str() 指针，异步执行 sendInLoop() 时就会读取悬空内存。
-        // TODO 修改 sendInLoop() 入参 const void *data。
-        m_loop->runInLoop([self = shared_from_this(), buf]()
-                          { self->sendInLoop(buf.data(), buf.size()); });
+        // 这里需要把业务层传入的数据按值捕获进投递对象中。send() 返回后，调用者原始传入的 data 可能已经析构；按值捕获会让 lambda 自己持有一份副本，把数据安全地保活到 loop 线程真正执行 sendInLoop() 为止。sendInLoop() 这里虽然接收 const std::string&，但它借用的是 lambda 内部那份仍然存活的字符串，而不是外层调用者原始对象的引用，保护了生命周期的问题。
+        m_loop->runInLoop([self = shared_from_this(), data]()
+                          { self->sendInLoop(data); });
     }
     else
     {
@@ -190,10 +189,10 @@ void TcpConnection::handleError()
     LOG_ERROR("TcpConnection::handleError name:{} - SO_ERROR:{}", m_name, err);
 }
 
-void TcpConnection::sendInLoop(const void *data, size_t len)
+void TcpConnection::sendInLoop(const std::string &data)
 {
     ssize_t nwrote = 0;
-    size_t remaining = len;
+    size_t remaining = data.size();
     bool faultError = false;
 
     // 只有 kDisconnected 才表示“连接已经彻底不能写了”。kDisconnecting 不能在这里直接拦掉，因为它表示的是“优雅关闭进行中”：用户可能刚执行完 send() 就立刻 shutdown()，此时状态虽然已切到 kDisconnecting，但这批数据仍然需要继续发完，随后才能真正 shutdownWrite()。
@@ -206,11 +205,11 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
     // 只有“当前发送通道完全空闲”时，才适合直接尝试 write：
     // 1. !m_channel->isWriting()：说明当前没有注册 EPOLLOUT，发送收尾流程没有进行中。因为用户可能多次 send()，这会导致 isWriting() 为 true。
     // 2. 0 == m_outputBuffer.readableBytes()：说明用户态发送缓冲区里没有前一次遗留的待发送数据。
-    // 这两个条件合起来表示“发送通道当前空闲”，可以走一次直接写 socket 的快路径，即先 ::write(fd, data, len)，如果一次写完，最好，连 m_outputBuffer 都不用进。反过来说，只要之前 send() 遗留了未发送完的数据，或者已经进入等待 EPOLLOUT 的异步发送阶段，新数据都不能直接 write，否则会有插队风险，破坏应用层期望的发送顺序；此时只能追加到 m_outputBuffer 末尾排队。
+    // 这两个条件合起来表示“发送通道当前空闲”，可以走一次直接写 socket 的快路径，即先 ::write(fd, data.data(), data.size())，如果一次写完，最好，连 m_outputBuffer 都不用进。反过来说，只要之前 send() 遗留了未发送完的数据，或者已经进入等待 EPOLLOUT 的异步发送阶段，新数据都不能直接 write，否则会有插队风险，破坏应用层期望的发送顺序；此时只能追加到 m_outputBuffer 末尾排队。
     // 进一步说，存不存在 m_channel->isWriting() && 0 == m_outputBuffer.readableBytes() 这种状态呢？可能有，这个状态可能也满足条件，但是绝对不是稳定可控的状态，可能只是一个瞬时态。isWriting() 代表 Reactor 侧的发送流程状态，outputBuffer 代表用户态缓存状态，二者是不同层面的信息。把两个条件都写上，才能明确表达：只要异步发送流程还没彻底结束，新数据就不能直接插队写 socket，我们不能冒语义不清晰的险。
     if (!m_channel->isWriting() && 0 == m_outputBuffer.readableBytes())
     {
-        nwrote = ::write(m_channel->fd(), data, len);
+        nwrote = ::write(m_channel->fd(), data.data(), data.size());
         if (nwrote >= 0)
         {
             remaining -= nwrote;
@@ -219,7 +218,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
         }
         else
         {
-            // write() 失败时返回 -1，但后续 m_outputBuffer.append((char *)data + nwrote, remaining); 代码复用了 nwrote 来计算“还有多少数据没发出去”以及“剩余数据从哪里开始追加到 m_outputBuffer”。这里把 nwrote 改成 0，明确表达“本次一个字节都没写出去（因为失败）”，保证后续语句的正确性，含义就是：如果这是可恢复情况（例如非阻塞 socket 当前暂时不可写），那就把整块原始数据都追加进发送缓冲区排队。
+            // write() 失败时返回 -1，但后续 m_outputBuffer.append(data.data() + nwrote, remaining); 代码复用了 nwrote 来计算“还有多少数据没发出去”以及“剩余数据从哪里开始追加到 m_outputBuffer”。这里把 nwrote 改成 0，明确表达“本次一个字节都没写出去（因为失败）”，保证后续语句的正确性，含义就是：如果这是可恢复情况（例如非阻塞 socket 当前暂时不可写），那就把整块原始数据都追加进发送缓冲区排队。
             nwrote = 0;
             // EWOULDBLOCK / EAGAIN 表示非阻塞 socket 当前不可写，常见原因是内核发送缓冲区暂时已满；这不是连接级错误，而是“稍后再试”。只有 errno 不是这两种“可恢复的暂时不可写”错误时，才按真正的写失败来处理。
             if (EWOULDBLOCK != errno && EAGAIN != errno)
@@ -246,7 +245,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
         // 这样可以避免缓冲区已经很大时，每次 send() 都重复触发回调，形成通知轰炸。注意：高水位回调只是把“发送积压已进入危险区”的事实通知上层，并不是自动背压机制；上层业务仍需自行决定是否限流、暂停生产、丢弃消息、记录告警或关闭连接。
         if (m_highWaterMarkCallback && oldLen < m_highWaterMark && oldLen + remaining >= m_highWaterMark) m_loop->queueInLoop(std::bind(m_highWaterMarkCallback, shared_from_this(), oldLen + remaining));
 
-        m_outputBuffer.append(reinterpret_cast<const char *>(data) + nwrote, remaining);
+        m_outputBuffer.append(data.data() + nwrote, remaining);
 
         // 这里一定要注册 channel 的写事件，否则 poller 不会给 channel 通知 EPOLLOUT，也保证上面快路径的判断条件正确。
         if (!m_channel->isWriting()) m_channel->enableWriting();
