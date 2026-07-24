@@ -5,6 +5,8 @@
 #include "timestamp.h"
 #include "eventloop.h"
 
+#include <sys/sendfile.h>
+
 
 TcpConnection::TcpConnection(EventLoop *loop, const std::string &name, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
     : m_loop(NetUtils::CheckLoopNotNull(loop)), m_name(name), m_socket(new Socket(sockfd)), m_channel(new Channel(m_loop, sockfd)), m_localAddr(localAddr), m_peerAddr(peerAddr)
@@ -191,7 +193,11 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
     bool faultError = false;
 
     // 只有 kDisconnected 才表示“连接已经彻底不能写了”。kDisconnecting 不能在这里直接拦掉，因为它表示的是“优雅关闭进行中”：用户可能刚执行完 send() 就立刻 shutdown()，此时状态虽然已切到 kDisconnecting，但这批数据仍然需要继续发完，随后才能真正 shutdownWrite()。
-    if (StateE::kDisconnected == m_state) LOG_ERROR("disconnected, give up writing");
+    if (StateE::kDisconnected == m_state)
+    {
+        LOG_ERROR("disconnected, give up writing");
+        return;
+    }
 
     // 只有“当前发送通道完全空闲”时，才适合直接尝试 write：
     // 1. !m_channel->isWriting()：说明当前没有注册 EPOLLOUT，发送收尾流程没有进行中。因为用户可能多次 send()，这会导致 isWriting() 为 true。
@@ -203,7 +209,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
         nwrote = ::write(m_channel->fd(), data, len);
         if (nwrote >= 0)
         {
-            remaining = len - nwrote;
+            remaining -= nwrote;
             // 既然在这里数据全部发送完成，就不用再给 channel 设置 EPOLLOUT 事件了。
             if (0 == remaining && m_writeCompleteCallback) m_loop->queueInLoop(std::bind(m_writeCompleteCallback, shared_from_this()));
         }
@@ -245,6 +251,42 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
 
 void TcpConnection::sendFileInLoop(int fileDescriptor, off_t offset, size_t count)
 {
+    // 入口结构和 sendInLoop() 类似：先尝试一次“快路径”直接发送，发不完再处理 remaining。但这里要注意，sendfile() 的“剩余部分”不是一段已经在用户态内存中的字节串，而是“文件中从某个 offset 开始还没继续送入 socket 的那一段内容”。因此 sendFileInLoop() 真正困难的地方不在第一次 sendfile()，而在“剩余文件内容如何被正确地续传、保序、并受 EPOLLOUT 驱动地推进”。
+    // 从发送语义上讲，文件内容也完全可以先 read 到用户态 buffer，再复用 sendInLoop()/m_outputBuffer/handleWrite() 这套已有发送通路。这样做的好处是实现统一；但代价是大文件不能一次性全部读入内存，必须自行分块，而且会多一次“文件 -> 用户态 buffer -> socket”的中转拷贝。sendfile() 的价值就在于避免这层用户态搬运，因此更适合大文件发送；代价则是剩余部分不能天然复用 m_outputBuffer 的续传状态机。
+    ssize_t bytesSent = 0;
+    size_t remaining = count;
+    bool faultError = false;
+
+    if (StateE::kDisconnected == m_state)
+    {
+        LOG_ERROR("disconnected, give up writing");
+        return;
+    }
+
+    // 尝试走快路径。条件仍然与 sendInLoop() 保持一致：只有当前发送通道完全空闲时，才尝试直接把文件内容推进 socket。
+    if (!m_channel->isWriting() && 0 == m_outputBuffer.readableBytes())
+    {
+        // sendfile() 成功返回，表示有一部分文件内容已经被推进 socket 的发送路径（通常是进入内核 socket 发送缓冲区），
+        // 并不表示对端已经真正收到；这一点和普通 write/send 的语义本质一致。
+        bytesSent = sendfile(m_socket->fd(), fileDescriptor, &offset, remaining);
+        if (bytesSent >= 0)
+        {
+            remaining -= bytesSent;
+            if (0 == remaining && m_writeCompleteCallback) m_loop->queueInLoop(std::bind(m_writeCompleteCallback, shared_from_this()));
+        }
+        else
+        {
+            if (EWOULDBLOCK != errno && EAGAIN != errno)
+            {
+                LOG_ERROR("TcpConnection::sendFileInLoop()");
+
+                if (EPIPE == errno || ECONNRESET == errno) faultError = true;
+            }
+        }
+    }
+
+    // TODO 当前实现对 remaining 的处理方式，是“把 sendFileInLoop 自己重新投递到 loop 再尝试一次”。这只是一个占位式的自重试思路，不等同于 sendInLoop() 那种基于 m_outputBuffer + EPOLLOUT + handleWrite() 的完整异步发送状态机。更准确地说，sendfile() 的剩余部分应该由单独的“待发送文件状态”来描述，例如 fileDescriptor / offset / remaining，然后在可写事件到来时再继续推进；否则这里只是重复尝试，而不是严格受事件驱动的续传。这里之所以暂时采用自投递，是为了先用最少状态把“首次直接 sendfile”这条主路径跑通；这只是一个简化实现，不是完整方案。
+    if (!faultError && remaining > 0) m_loop->queueInLoop(std::bind(&TcpConnection::sendFileInLoop, shared_from_this(), fileDescriptor, offset, remaining));
 }
 
 void TcpConnection::shutdownInLoop()
