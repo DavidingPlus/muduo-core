@@ -33,7 +33,10 @@ void TcpConnection::send(const std::string &buf)
     // send() 只允许在 kConnected 状态下进入，含义是：一旦用户已经发起 shutdown()，状态变为 kDisconnecting，就不再接受新的业务发送请求。但这并不影响之前已经进入发送流程的数据继续发送完毕；那部分收尾工作由 sendInLoop()/handleWrite() 负责。
     if (connected())
     {
-        m_loop->runInLoop(std::bind(&TcpConnection::sendInLoop, shared_from_this(), buf.c_str(), buf.size()));
+        // 这里必须把业务层传入的数据拷贝进投递对象中。send() 返回后，调用者传入的 std::string 可能已经析构，若只捕获 buf.c_str() 指针，异步执行 sendInLoop() 时就会读取悬空内存。
+        // TODO 修改 sendInLoop() 入参 const void *data。
+        m_loop->runInLoop([self = shared_from_this(), buf]()
+                          { self->sendInLoop(buf.data(), buf.size()); });
     }
     else
     {
@@ -73,7 +76,7 @@ void TcpConnection::connectEstablished()
     m_channel->enableReading();
 
     // 新连接建立，执行回调。
-    m_connectionCallback(shared_from_this());
+    if (m_connectionCallback) m_connectionCallback(shared_from_this());
 }
 
 void TcpConnection::connectDestroyed()
@@ -87,7 +90,7 @@ void TcpConnection::connectDestroyed()
         m_channel->disableAll();
 
         // 执行连接状态变化回调。
-        m_connectionCallback(shared_from_this());
+        if (m_connectionCallback) m_connectionCallback(shared_from_this());
     }
 
     // 把 channel 从 poller 中删除掉。
@@ -102,7 +105,7 @@ void TcpConnection::handleRead(const Timestamp &receiveTime)
     if (n > 0)
     {
         // 已建立连接的用户有可读事件发生了，调用用户传入的回调操作 m_messageCallback，shared_from_this 用于安全地获取 TcpConnection 的智能指针。
-        m_messageCallback(shared_from_this(), m_inputBuffer, receiveTime);
+        if (m_messageCallback) m_messageCallback(shared_from_this(), m_inputBuffer, receiveTime);
     }
     // 客户端断开。
     else if (0 == n)
@@ -162,10 +165,10 @@ void TcpConnection::handleClose()
     // 同 TcpServer::~TcpServer()，这里先保存一份 shared_ptr 副本，不是为了传参方便，而是为了在后续多个回调执行期间“保活”当前 TcpConnection。原因是 closeCallback 最终会走到 TcpServer::removeConnection() -> connectDestroyed()，它可能触发连接从容器中移除并进入销毁路径。用本地 connPtr 持有一份强引用，可以明确保证：即使回调内部发生删除连接等操作，当前 handleClose() 返回前对象也不会提前析构。
     TcpConnectionPtr connPtr(shared_from_this());
     // 执行连接状态变化回调。
-    m_connectionCallback(connPtr);
+    if (m_connectionCallback) m_connectionCallback(connPtr);
     // 执行关闭连接的回调。
     // 具体执行的是 TcpServer::removeConnection() 回调（由 TcpServer::newConnection() 创建并初始化），最后会执行到 TcpConnection::connectDestroyed() 回调。会执行一系列删除操作，因此必须放在最后一句。
-    m_closeCallback(connPtr);
+    if (m_closeCallback) m_closeCallback(connPtr);
 }
 
 void TcpConnection::handleError()

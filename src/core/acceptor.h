@@ -12,7 +12,7 @@ class EventLoop;
 class InetAddress;
 
 
-// Accetpor 封装了服务器监听套接字 fd 以及相关处理方法。
+// Acceptor 封装了服务器监听套接字 fd 以及相关处理方法。
 class Acceptor
 {
 
