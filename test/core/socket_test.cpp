@@ -13,40 +13,9 @@
 
 #include "socket.h"
 #include "inetaddress.h"
+#include "nettestutils.h"
 
-
-namespace
-{
-
-    // 统一创建测试用 TCP socket，减少样板代码。
-    int createTcpSocket()
-    {
-        const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        EXPECT_GE(fd, 0);
-        return fd;
-    }
-
-    // 直接向内核读取 socket option，验证 setter 是否真的生效。
-    int getSocketOption(int fd, int level, int option)
-    {
-        int value = -1;
-        socklen_t len = sizeof(value);
-        EXPECT_EQ(::getsockopt(fd, level, option, &value, &len), 0);
-        EXPECT_EQ(len, sizeof(value));
-        return value;
-    }
-
-    // 读取监听 socket 实际绑定到的端口，便于客户端回连。
-    uint16_t getBoundPort(int fd)
-    {
-        sockaddr_in addr{};
-        socklen_t len = sizeof(addr);
-        EXPECT_EQ(::getsockname(fd, reinterpret_cast<sockaddr *>(&addr), &len), 0);
-        EXPECT_EQ(len, sizeof(addr));
-        return ::ntohs(addr.sin_port);
-    }
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证 Socket 析构时会关闭它拥有的 fd。

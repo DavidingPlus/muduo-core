@@ -9,42 +9,10 @@
 
 #include "channel.h"
 #include "eventloop.h"
+#include "nettestutils.h"
 #include "timestamp.h"
 
-
-namespace
-{
-
-    // RAII 包装 eventfd，避免 Channel 用例提前返回时泄漏 fd。
-    class ScopedFd
-    {
-
-    public:
-
-        explicit ScopedFd(int fd) : m_fd(fd) {}
-
-        ~ScopedFd()
-        {
-            if (m_fd >= 0) ::close(m_fd);
-        }
-
-        int get() const { return m_fd; }
-
-
-    private:
-
-        int m_fd = -1;
-    };
-
-    // 生成可用于 epoll 事件测试的 eventfd。
-    int createEventFd()
-    {
-        const int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-        EXPECT_GE(fd, 0);
-        return fd;
-    }
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证 enable/disable/remove 这些状态切换会同步反映到 Channel 和 EventLoop 的注册关系。

@@ -14,116 +14,12 @@
 #include "channel.h"
 #include "epollpoller.h"
 #include "eventloop.h"
+#include "nettestutils.h"
 #include "poller.h"
 
 
 using namespace std::chrono_literals;
-
-
-namespace
-{
-
-    // RAII 包装 eventfd，避免测试提前结束时泄漏 fd。
-    class ScopedFd
-    {
-
-    public:
-
-        explicit ScopedFd(int fd) : m_fd(fd) {}
-
-        ~ScopedFd()
-        {
-            if (m_fd >= 0) ::close(m_fd);
-        }
-
-        int get() const { return m_fd; }
-
-
-    private:
-
-        int m_fd = -1;
-    };
-
-    // 临时覆盖环境变量，结束时恢复现场，避免污染其他用例。
-    class ScopedEnvVar
-    {
-
-    public:
-
-        explicit ScopedEnvVar(const char *name) : m_name(name)
-        {
-            const char *value = ::getenv(m_name.c_str());
-            if (value)
-            {
-                m_hadValue = true;
-                m_value = value;
-            }
-        }
-
-        ~ScopedEnvVar()
-        {
-            if (m_hadValue)
-            {
-                ::setenv(m_name.c_str(), m_value.c_str(), 1);
-            }
-            else
-            {
-                ::unsetenv(m_name.c_str());
-            }
-        }
-
-
-    private:
-
-        std::string m_name;
-        std::string m_value;
-        bool m_hadValue = false;
-    };
-
-    // 用于验证 Poller 接口的最小 stub 实现。
-    class StubPoller : public Poller
-    {
-
-    public:
-
-        explicit StubPoller(EventLoop *loop) : Poller(loop) {}
-
-        Timestamp poll(int, ChannelList *) override;
-
-        void updateChannel(Channel *) override {}
-
-        void removeChannel(Channel *) override {}
-
-        void track(Channel *channel) { m_channels[channel->fd()] = channel; }
-    };
-
-    Timestamp StubPoller::poll(int, ChannelList *)
-    {
-        return Timestamp::Now();
-    }
-
-    // 生成一个非阻塞、close-on-exec 的 eventfd 作为测试源。
-    int createEventFd()
-    {
-        const int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-        EXPECT_GE(fd, 0);
-        return fd;
-    }
-
-    // 往 eventfd 写入一次，制造可读事件。
-    void writeEventFd(int fd, uint64_t value = 1)
-    {
-        ASSERT_EQ(::write(fd, &value, sizeof(value)), static_cast<ssize_t>(sizeof(value)));
-    }
-
-    // 把 eventfd 里的计数读空，避免后续测试误判为还有可读事件。
-    void readEventFd(int fd)
-    {
-        uint64_t value = 0;
-        ASSERT_EQ(::read(fd, &value, sizeof(value)), static_cast<ssize_t>(sizeof(value)));
-    }
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证 Poller 通过内部 fd 映射判断某个 Channel 是否已注册。

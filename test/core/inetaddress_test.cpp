@@ -3,23 +3,10 @@
 #include <arpa/inet.h>
 
 #include "inetaddress.h"
+#include "nettestutils.h"
 
 
-namespace
-{
-
-    sockaddr_in makeSockAddr(const char *ip, uint16_t port)
-    {
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port = ::htons(port);
-        EXPECT_EQ(::inet_pton(AF_INET, ip, &addr.sin_addr), 1);
-
-
-        return addr;
-    }
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证默认构造会生成 127.0.0.1:0。

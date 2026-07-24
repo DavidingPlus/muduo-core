@@ -14,22 +14,11 @@
 #include "eventloop.h"
 #include "eventloopthread.h"
 #include "eventloopthreadpool.h"
+#include "nettestutils.h"
 
 
 using namespace std::chrono_literals;
-
-
-namespace
-{
-
-    // 把 vector 转成 set，方便比较去重后的 loop / tid 集合。
-    template <typename T>
-    std::unordered_set<T> toSet(const std::vector<T> &values)
-    {
-        return std::unordered_set<T>(values.begin(), values.end());
-    }
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证线程数为 0 时，线程池只使用主 loop，并且初始化回调只执行一次。

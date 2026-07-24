@@ -7,39 +7,9 @@
 #include <unistd.h>
 
 #include "buffer.h"
+#include "nettestutils.h"
 
-
-namespace
-{
-
-    // 用 pipe 提供一个最简单的读写 fd，避免依赖网络栈。
-    class Pipe
-    {
-
-    public:
-
-        Pipe()
-        {
-            if (::pipe(m_fds) != 0) throw std::runtime_error("pipe failed");
-        }
-
-        ~Pipe()
-        {
-            if (m_fds[0] >= 0) ::close(m_fds[0]);
-            if (m_fds[1] >= 0) ::close(m_fds[1]);
-        }
-
-        int readEnd() const { return m_fds[0]; }
-
-        int writeEnd() const { return m_fds[1]; }
-
-
-    private:
-
-        int m_fds[2] = {-1, -1};
-    };
-
-} // namespace
+using namespace NetTestUtils;
 
 
 // 验证 Buffer 初始时没有可读数据，读写指针位于同一位置。
