@@ -1,7 +1,7 @@
 includes("config.lua")
 
 
-local version = "0.0.0"
+local version = "1.0.0"
 
 set_version(version)
 
